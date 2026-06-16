@@ -68,11 +68,12 @@ if uploaded_file is not None:
                         name=f'Finger {i}',
                         marker=dict(size=14, symbol='circle')
                     ))
+
             
           
             fig.update_layout(
                 xaxis=dict(range=[0.1, max_val_x], title="X Coordinate"),
-                yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), # REVERSED Y-AXIS (Max to Min) for Tablet Grids
+                yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), 
                 height=500,
                 title=f"Frame Timeline View | Time: {timestamp}s (Row {current_frame})",
                 showlegend=True
@@ -84,10 +85,10 @@ if uploaded_file is not None:
             for current_frame in range(0, total_rows):
                 fig = draw_chart(current_frame)
                 plot_placeholder.plotly_chart(fig, use_container_width=True)
-                time.sleep(0.02) # Control playback frame rate speed
+                time.sleep(0.02) 
             st.info("Animation sequence complete.")
         else:
-            # Otherwise, just render whatever frame the manual slider is set to
+           
             fig = draw_chart(frame_idx)
             plot_placeholder.plotly_chart(fig, use_container_width=True)
             
