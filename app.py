@@ -104,7 +104,7 @@ if uploaded_file is not None:
             if st.session_state.current_frame < total_rows - 1:
                 
                 st.session_state.current_frame += 1
-                time.sleep(0.01) 
+                time.sleep(0.001) 
                 st.rerun()
             else:
                 
