@@ -35,7 +35,6 @@ if uploaded_file is not None:
         max_val_y = max_val_y * 1.1 if max_val_y > 0 else 100
         
         # 3. PRE-BUILD THE ANIMATION FRAMES NATIVELY
-        # This builds every single frame configuration in memory beforehand so there's no lag!
         animation_frames = []
         for current_frame in range(total_rows):
             row_data = df.iloc[current_frame]
@@ -112,7 +111,6 @@ if uploaded_file is not None:
         )
         
         # 6. INJECT NATIVE TIMELINE TRACKBAR/SLIDER
-        # This replaces the choppy external Streamlit slider component entirely
         sliders_dict = {
             "active": 0,
             "yanchor": "top",
@@ -121,7 +119,7 @@ if uploaded_file is not None:
                 "font": {"size": 14},
                 "prefix": "Scrubbed Frame: ",
                 "visible": True,
-                "xposition": "right"
+                "xanchor": "right"  # FIXED PROP NAME
             },
             "transition": {"duration": 0},
             "pad": {"b": 10, "t": 50},
