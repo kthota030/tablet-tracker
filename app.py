@@ -19,7 +19,7 @@ uploaded_file = st.file_uploader("Drop your tracking CSV or TXT file here", type
 
 if uploaded_file is not None:
     try:
-        # Load data instantly using Pandas
+        # Load data instantly using Pandas and cache it
         @st.cache_data
         def load_data(file):
             return pd.read_csv(file)
@@ -93,12 +93,10 @@ if uploaded_file is not None:
             yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), # REVERSED Y-AXIS
             height=500,
             title=f"Timeline View | Time: {timestamp}s (Frame {st.session_state.current_frame} / {total_rows - 1})",
-            showlegend=True,
-            # Turn off heavy animations during redraws for pure speed
-            animation_options=dict(frame=dict(duration=0, redraw=False))
+            showlegend=True
         )
         
-        # Display the chart
+        # Display the chart with a unique key per frame to maximize render efficiency
         st.plotly_chart(fig, use_container_width=True, key=f"chart_{st.session_state.current_frame}")
         
         # 5. ANIMATION LOOP ENGINE
