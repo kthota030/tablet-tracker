@@ -119,7 +119,7 @@ if uploaded_file is not None:
                 
               
                 st.session_state.current_frame = next_frame
-                time.sleep(0.001)
+                time.sleep(0.0001)
                 st.rerun()
             else:
                 
