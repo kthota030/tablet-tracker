@@ -1,27 +1,36 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import time
 
 # Set up the web page title and description
-st.set_page_config(page_title="Tablet Tracking Dashboard", layout="centered")
-st.title("📱 Smooth Tablet Tracking Dashboard")
-st.write("Upload a CSV file with your block data format to see a smooth, lag-free animation pipeline.")
+st.set_page_config(page_title="Fast Tablet Tracking Dashboard", layout="centered")
+st.title("⚡ High-Speed Tablet Tracking Dashboard")
+st.write("Optimized for instant file loading and rapid frame updates.")
+
+# Initialize a background "session state" memory to track animation playback status
+if "playing" not in st.session_state:
+    st.session_state.playing = False
+if "current_frame" not in st.session_state:
+    st.session_state.current_frame = 0
 
 # 1. FILE UPLOADER COMPONENT
 uploaded_file = st.file_uploader("Drop your tracking CSV or TXT file here", type=["csv", "txt"])
 
 if uploaded_file is not None:
     try:
-        # Load data using Pandas
-        df = pd.read_csv(uploaded_file)
+        # Load data instantly using Pandas
+        @st.cache_data
+        def load_data(file):
+            return pd.read_csv(file)
+            
+        df = load_data(uploaded_file)
         
         # 2. PARSE THE BLOCK DATA FORMAT
         total_cols = len(df.columns)
         coordinate_cols = total_cols - 1
         total_fingers = int(coordinate_cols / 2)
         total_rows = len(df)
-        
-        st.success(f"Successfully loaded data! Found {total_fingers} tracking fingers across {total_rows} frames.")
         
         # --- AUTOMATIC AXIS BOUNDARY CALCULATOR ---
         x_columns = df.columns[1:total_fingers + 1]
@@ -34,116 +43,76 @@ if uploaded_file is not None:
         max_val_x = max_val_x * 1.1 if max_val_x > 0 else 100
         max_val_y = max_val_y * 1.1 if max_val_y > 0 else 100
         
-        # 3. PRE-BUILD THE ANIMATION FRAMES NATIVELY
-        animation_frames = []
-        for current_frame in range(total_rows):
-            row_data = df.iloc[current_frame]
-            timestamp = row_data.iloc[0]
-            
-            frame_traces = []
-            # Gather coordinate tracking dots for this specific frame row
-            for i in range(total_fingers):
-                x_val = row_data.iloc[1 + i]
-                y_val = row_data.iloc[1 + total_fingers + i]
-                
-                if x_val > 0.1 and y_val > 0.1:
-                    frame_traces.append(go.Scatter(
-                        x=[x_val],
-                        y=[y_val],
-                        mode='markers',
-                        name=f'Finger {i}',
-                        marker=dict(size=14, symbol='circle')
-                    ))
-            
-            # Save this snapshot state as an official Plotly Frame configuration
-            animation_frames.append(go.Frame(
-                data=frame_traces,
-                name=str(current_frame),
-                layout=go.Layout(title_text=f"Timeline View | Time: {timestamp}s (Frame {current_frame})")
-            ))
-            
-        # 4. INITIAL BASE DATA STATE (Frame 0)
-        initial_traces = []
-        first_row = df.iloc[0]
+        # 3. INTERFACE CONTROLS
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            # Play / Pause toggle button
+            if st.session_state.playing:
+                if st.button("⏸ Pause"):
+                    st.session_state.playing = False
+                    st.rerun()
+            else:
+                if st.button("▶ Play Animation"):
+                    st.session_state.playing = True
+                    st.rerun()
+                    
+        with col2:
+            # Manual slider that links directly to our current frame state memory
+            frame_idx = st.slider(
+                "Timeline Frames", 
+                min_value=0, 
+                max_value=total_rows - 1, 
+                value=st.session_state.current_frame,
+                key="slider_frame"
+            )
+            # Update our state memory if the user manually changes the slider
+            if frame_idx != st.session_state.current_frame and not st.session_state.playing:
+                st.session_state.current_frame = frame_idx
+
+        # 4. DRAW THE CURRENT ACTIVE FRAME (Super Fast Rendering)
+        row_data = df.iloc[st.session_state.current_frame]
+        timestamp = row_data.iloc[0]
+        
+        fig = go.Figure()
+        
         for i in range(total_fingers):
-            x_val = first_row.iloc[1 + i]
-            y_val = first_row.iloc[1 + total_fingers + i]
+            x_val = row_data.iloc[1 + i]
+            y_val = row_data.iloc[1 + total_fingers + i]
+            
             if x_val > 0.1 and y_val > 0.1:
-                initial_traces.append(go.Scatter(
+                fig.add_trace(go.Scatter(
                     x=[x_val],
                     y=[y_val],
                     mode='markers',
                     name=f'Finger {i}',
                     marker=dict(size=14, symbol='circle')
                 ))
-                
-        # 5. ASSEMBLE MASTER CHART OBJECT WITH EMBEDDED CONTROLS
-        fig = go.Figure(
-            data=initial_traces,
-            layout=go.Layout(
-                xaxis=dict(range=[0.1, max_val_x], title="X Coordinate"),
-                yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), # REVERSED Y-AXIS
-                height=550,
-                title=f"Timeline View | Time: {df.iloc[0].iloc[0]}s (Frame 0)",
-                showlegend=True,
-                
-                # Native, optimized HTML5 playback buttons directly inside the chart canvas
-                updatemenus=[dict(
-                    type="buttons",
-                    buttons=[
-                        dict(label="▶ Play",
-                             method="animate",
-                             args=[None, dict(frame=dict(duration=20, redraw=True), fromcurrent=True)]),
-                        dict(label="⏸ Pause",
-                             method="animate",
-                             args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")])
-                    ],
-                    direction="left",
-                    pad={"r": 10, "t": 10},
-                    showactive=False,
-                    x=0.1,
-                    xanchor="right",
-                    y=0,
-                    yanchor="top"
-                )]
-            ),
-            frames=animation_frames
+        
+        fig.update_layout(
+            xaxis=dict(range=[0.1, max_val_x], title="X Coordinate"),
+            yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), # REVERSED Y-AXIS
+            height=500,
+            title=f"Timeline View | Time: {timestamp}s (Frame {st.session_state.current_frame} / {total_rows - 1})",
+            showlegend=True,
+            # Turn off heavy animations during redraws for pure speed
+            animation_options=dict(frame=dict(duration=0, redraw=False))
         )
         
-        # 6. INJECT NATIVE TIMELINE TRACKBAR/SLIDER
-        sliders_dict = {
-            "active": 0,
-            "yanchor": "top",
-            "xanchor": "left",
-            "currentvalue": {
-                "font": {"size": 14},
-                "prefix": "Scrubbed Frame: ",
-                "visible": True,
-                "xanchor": "right"  # FIXED PROP NAME
-            },
-            "transition": {"duration": 0},
-            "pad": {"b": 10, "t": 50},
-            "len": 0.9,
-            "x": 0.1,
-            "y": 0,
-            "steps": []
-        }
+        # Display the chart
+        st.plotly_chart(fig, use_container_width=True, key=f"chart_{st.session_state.current_frame}")
         
-        for current_frame in range(total_rows):
-            slider_step = {
-                "args": [
-                    [str(current_frame)],
-                    {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}
-                ],
-                "label": str(current_frame),
-                "method": "animate"
-            }
-            sliders_dict["steps"].append(slider_step)
-            
-        fig.update_layout(sliders=[sliders_dict])
-        
-        # Output the master responsive figure asset to screen once
-        st.plotly_chart(fig, use_container_width=True)
-            
+        # 5. ANIMATION LOOP ENGINE
+        if st.session_state.playing:
+            if st.session_state.current_frame < total_rows - 1:
+                # Step forward to the next frame and instantly refresh the page
+                st.session_state.current_frame += 1
+                time.sleep(0.01) # Controls animation speed (0.01 = very fast)
+                st.rerun()
+            else:
+                # Stop if we hit the end of the file
+                st.session_state.playing = False
+                st.session_state.current_frame = 0
+                st.rerun()
+                
     except Exception as e:
         st.error(f"Error parsing data layout: {e}. Ensure your columns are ordered as Time, X0, X1..., Y0, Y1...")
