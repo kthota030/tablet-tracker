@@ -90,7 +90,7 @@ if uploaded_file is not None:
         
         fig.update_layout(
             xaxis=dict(range=[0.1, max_val_x], title="X Coordinate"),
-            yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"), # REVERSED Y-AXIS
+            yaxis=dict(range=[max_val_y, 0.1], title="Y Coordinate"),
             height=500,
             title=f"Timeline View | Time: {timestamp}s (Frame {st.session_state.current_frame} / {total_rows - 1})",
             showlegend=True
@@ -113,13 +113,13 @@ if uploaded_file is not None:
                     
                    
                     if max(all_coordinates) <= 0.1:
-                        next_frame += 1  # Skip this zero frame!
+                        next_frame += 1 
                     else:
-                        break  # Found active tracking data, stop skipping!
+                        break 
                 
               
                 st.session_state.current_frame = next_frame
-                time.sleep(0.01)
+                time.sleep(0.001)
                 st.rerun()
             else:
                 
