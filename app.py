@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import time
 
 
-st.set_page_config(page_title="Fast Tablet Tracking Dashboard", layout="centered")
+st.set_page_config(page_title="Tablet Tracking Dashboard", layout="centered")
 st.title("Tablet Tracking Dashboard")
 
 
