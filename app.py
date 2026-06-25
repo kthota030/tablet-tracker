@@ -51,76 +51,93 @@ if uploaded_file is not None:
     
     max_frames = len(filtered_df) - 1
 
-    # --- LAYOUT CONTROLS ---
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        frame_idx = st.slider(
-            "Timeline Frame Index", 
-            min_value=0, 
-            max_value=max_frames, 
-            value=st.session_state.current_frame
-        )
-        st.session_state.current_frame = frame_idx
-        
-    with col2:
-        st.write("##") # Visual spacing
-        if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause"):
-            st.session_state.playing = not st.session_state.playing
-            st.rerun()
+    # --- CONTROL BUTTON ---
+    # Toggle play state
+    if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause"):
+        st.session_state.playing = not st.session_state.playing
 
-    # --- THE RUNNING ANIMATION LOOP ---
-    if st.session_state.playing:
-        if st.session_state.current_frame < max_frames:
-            time.sleep(0.05)  # Frame delay speed
-            st.session_state.current_frame += 1
-            st.rerun()
-        else:
-            st.session_state.playing = False
-            st.rerun()
+    # --- LIVE RENDER CONTAINERS ---
+    # We create empty layout blocks so that updates stream live to the browser
+    slider_placeholder = st.empty()
+    time_placeholder = st.empty()
+    chart_placeholder = st.empty()
 
-    # --- DATA EXTRACTION FOR CURRENT FRAME ---
-    current_row = filtered_df.iloc[st.session_state.current_frame]
-    
-    time_col = df.columns[0]
-    current_time = current_row[time_col]
-    st.write(f"**Current Frame Timestamp:** `{current_time}`")
-
-    plot_data = []
-    for fid in valid_finger_ids:
-        x_val = current_row[x_cols[fid]]
-        y_val = current_row[y_cols[fid]]
-        
-        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-            plot_data.append({
-                "Finger": f"Finger {fid}",
-                "X": float(x_val),
-                "Y": float(y_val)
-            })
-            
-    frame_plot_df = pd.DataFrame(plot_data)
-
-    # --- PLOTLY RENDERING ---
+    # Dynamic limits for layout graphing boxes
     max_x = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     max_y = float(len(filtered_df))
+    time_col = df.columns[0]
 
-    if not frame_plot_df.empty:
-        fig = px.scatter(
-            frame_plot_df, 
-            x="X", 
-            y="Y", 
-            color="Finger",
-            range_x=[0, max_x], 
-            range_y=[0, max_y],
-            title=f"Live Coordinates - Frame {st.session_state.current_frame}"
-        )
-        fig.update_yaxes(autorange="reversed")
-        
-        # FIXED: Added a dynamic key based on the frame number to force updates
-        st.plotly_chart(
-            fig, 
-            use_container_width=True, 
-            key=f"chart_frame_{st.session_state.current_frame}"
-        )
+    # --- ANIMATION RUN STATE TRACKER ---
+    if st.session_state.playing:
+        # Loop forward from where the state currently sits
+        for f in range(st.session_state.current_frame, max_frames + 1):
+            if not st.session_state.playing:
+                break
+            
+            st.session_state.current_frame = f
+            
+            # 1. Update Slider UI Element Visuals
+            slider_placeholder.slider("Timeline Frame Index", 0, max_frames, f, key=f"play_slider_{f}")
+            
+            # 2. Update Timestamp Text
+            current_row = filtered_df.iloc[f]
+            time_placeholder.write(f"**Current Frame Timestamp:** `{current_row[time_col]}`")
+            
+            # 3. Extract and Build Plotting DataFrame
+            plot_data = []
+            for fid in valid_finger_ids:
+                x_val = current_row[x_cols[fid]]
+                y_val = current_row[y_cols[fid]]
+                if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                    plot_data.append({"Finger": f"Finger {fid}", "X": float(x_val), "Y": float(y_val)})
+            
+            frame_plot_df = pd.DataFrame(plot_data)
+            
+            # 4. Render Live Graph Update inside placeholder
+            if not frame_plot_df.empty:
+                fig = px.scatter(
+                    frame_plot_df, x="X", y="Y", color="Finger",
+                    range_x=[0, max_x], range_y=[0, max_y],
+                    title=f"Live Coordinates - Frame {f}"
+                )
+                fig.update_yaxes(autorange="reversed")
+                chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"live_chart_{f}")
+            else:
+                chart_placeholder.info("No active coordinate data points to draw for this specific frame.")
+                
+            time.sleep(0.05)
+            
+        # Reset toggle automatically if it reaches the end frame
+        if st.session_state.current_frame >= max_frames:
+            st.session_state.playing = False
+            st.session_state.current_frame = 0
+            st.rerun()
+
     else:
-        st.info("No active coordinate data points to draw for this specific frame.")
+        # --- STATIC INTERACTION MODE (When Paused) ---
+        # Allow the user to drag the slider manually
+        manual_frame = slider_placeholder.slider("Timeline Frame Index", 0, max_frames, st.session_state.current_frame)
+        st.session_state.current_frame = manual_frame
+        
+        current_row = filtered_df.iloc[manual_frame]
+        time_placeholder.write(f"**Current Frame Timestamp:** `{current_row[time_col]}`")
+        
+        plot_data = []
+        for fid in valid_finger_ids:
+            x_val = current_row[x_cols[fid]]
+            y_val = current_row[y_cols[fid]]
+            if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                plot_data.append({"Finger": f"Finger {fid}", "X": float(x_val), "Y": float(y_val)})
+        
+        frame_plot_df = pd.DataFrame(plot_data)
+        
+        if not frame_plot_df.empty:
+            fig = px.scatter(
+                frame_plot_df, x="X", y="Y", color="Finger",
+                range_x=[0, max_x], range_y=[0, max_y],
+                title=f"Live Coordinates - Frame {manual_frame}"
+            )
+            fig.update_yaxes(autorange="reversed")
+            chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"static_chart_{manual_frame}")
+        else:
+            chart_placeholder.info("No active coordinate data points to draw for this specific frame.")
