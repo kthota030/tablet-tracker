@@ -52,17 +52,19 @@ if uploaded_file is not None:
     max_frames = len(filtered_df) - 1
 
     # --- CONTROL BUTTON ---
-    if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause"):
+    # Using an assignment trick so Streamlit registers the click and updates state instantly
+    button_label = "⏸ Pause" if st.session_state.playing else "▶ Play"
+    if st.button(button_label):
         st.session_state.playing = not st.session_state.playing
+        st.rerun()
 
     # --- LIVE RENDER CONTAINERS ---
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
     chart_placeholder = st.empty()
 
-    # --- GLOBAL BOUNDS (Locked for the entire dataset) ---
+    # --- GLOBAL BOUNDS ---
     max_x = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
-    # Finds the true highest Y value across all coordinates in the whole file
     max_y = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     
     time_col = df.columns[0]
@@ -70,6 +72,7 @@ if uploaded_file is not None:
     # --- ANIMATION RUN STATE TRACKER ---
     if st.session_state.playing:
         for f in range(st.session_state.current_frame, max_frames + 1):
+            # Check the live application state instantly before drawing the next frame
             if not st.session_state.playing:
                 break
             
@@ -96,8 +99,7 @@ if uploaded_file is not None:
             if not frame_plot_df.empty:
                 fig = px.scatter(
                     frame_plot_df, x="X", y="Y", color="Finger",
-                    range_x=[0, max_x], 
-                    range_y=[max_y, 0],  # FIXED: Locks max value at bottom and 0 at the very top
+                    range_x=[0, max_x], range_y=[max_y, 0],
                     title=f"Live Coordinates - Frame {f}"
                 )
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"live_chart_{f}")
@@ -131,8 +133,7 @@ if uploaded_file is not None:
         if not frame_plot_df.empty:
             fig = px.scatter(
                 frame_plot_df, x="X", y="Y", color="Finger",
-                range_x=[0, max_x], 
-                range_y=[max_y, 0],  # FIXED: Locks max value at bottom and 0 at the very top
+                range_x=[0, max_x], range_y=[max_y, 0],
                 title=f"Live Coordinates - Frame {manual_frame}"
             )
             chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"static_chart_{manual_frame}")
