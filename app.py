@@ -55,8 +55,6 @@ if uploaded_file is not None:
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        # FIXED: Removed the key parameter. We read from session state, 
-        # and if the user manually drags it, we update session state.
         frame_idx = st.slider(
             "Timeline Frame Index", 
             min_value=0, 
@@ -104,7 +102,7 @@ if uploaded_file is not None:
 
     # --- PLOTLY RENDERING ---
     max_x = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
-    max_y = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
+    max_y = float(len(filtered_df))
 
     if not frame_plot_df.empty:
         fig = px.scatter(
