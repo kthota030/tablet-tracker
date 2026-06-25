@@ -55,19 +55,20 @@ if uploaded_file is not None:
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        # The slider updates the session state directly
+        # FIXED: Removed the key parameter. We read from session state, 
+        # and if the user manually drags it, we update session state.
         frame_idx = st.slider(
             "Timeline Frame Index", 
             min_value=0, 
             max_value=max_frames, 
-            key="current_frame"
+            value=st.session_state.current_frame
         )
+        st.session_state.current_frame = frame_idx
         
     with col2:
-        st.write("##") # Visual spacing to align button with slider
+        st.write("##") # Visual spacing
         if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause"):
             st.session_state.playing = not st.session_state.playing
-            # Force a re-run to immediately step into the animation loop block
             st.rerun()
 
     # --- THE RUNNING ANIMATION LOOP ---
@@ -77,7 +78,6 @@ if uploaded_file is not None:
             st.session_state.current_frame += 1
             st.rerun()
         else:
-            # Reached the end of the data, turn off playback
             st.session_state.playing = False
             st.rerun()
 
