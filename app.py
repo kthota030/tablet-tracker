@@ -3,16 +3,16 @@ import pandas as pd
 import plotly.express as px
 import time
 
-st.title("Tablet Tracking System (Robust Header Processing)")
+st.title("Tablet Tracking System")
 
-# 1. File Uploader
+
 uploaded_file = st.file_uploader("Upload Raw Tracking Data (.csv)", type=["csv"])
 
 if uploaded_file is not None:
-    # Read the full dataset
+ 
     df = pd.read_csv(uploaded_file)
     
-    # --- HEADER MAPPING LOGIC ---
+    
     x_cols = {}
     y_cols = {}
     
@@ -33,7 +33,7 @@ if uploaded_file is not None:
         
     tracked_columns = [x_cols[fid] for fid in valid_finger_ids] + [y_cols[fid] for fid in valid_finger_ids]
 
-    # --- ROW-SKIPPING LOGIC ---
+  
     valid_rows_mask = df[tracked_columns].fillna(0).abs().sum(axis=1) > 0
     filtered_df = df[valid_rows_mask].reset_index(drop=True)
     
@@ -41,7 +41,7 @@ if uploaded_file is not None:
         st.warning("All rows in this file contain only 0s or empty coordinates!")
         st.stop()
 
-    # --- INITIALIZE SESSION STATES ---
+    
     if "playing" not in st.session_state:
         st.session_state.playing = False
     if "current_frame" not in st.session_state:
@@ -51,41 +51,40 @@ if uploaded_file is not None:
     
     max_frames = len(filtered_df) - 1
 
-    # --- CONTROL BUTTON ---
-    # Using an assignment trick so Streamlit registers the click and updates state instantly
+
     button_label = "⏸ Pause" if st.session_state.playing else "▶ Play"
     if st.button(button_label):
         st.session_state.playing = not st.session_state.playing
         st.rerun()
 
-    # --- LIVE RENDER CONTAINERS ---
+  
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
     chart_placeholder = st.empty()
 
-    # --- GLOBAL BOUNDS ---
+   
     max_x = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     max_y = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     
     time_col = df.columns[0]
 
-    # --- ANIMATION RUN STATE TRACKER ---
+  
     if st.session_state.playing:
         for f in range(st.session_state.current_frame, max_frames + 1):
-            # Check the live application state instantly before drawing the next frame
+           
             if not st.session_state.playing:
                 break
             
             st.session_state.current_frame = f
             
-            # 1. Update Slider UI
+            
             slider_placeholder.slider("Timeline Frame Index", 0, max_frames, f, key=f"play_slider_{f}")
             
-            # 2. Update Timestamp Text
+           
             current_row = filtered_df.iloc[f]
             time_placeholder.write(f"**Current Frame Timestamp:** `{current_row[time_col]}`")
             
-            # 3. Extract Plotting DataFrame
+         
             plot_data = []
             for fid in valid_finger_ids:
                 x_val = current_row[x_cols[fid]]
@@ -95,7 +94,7 @@ if uploaded_file is not None:
             
             frame_plot_df = pd.DataFrame(plot_data)
             
-            # 4. Render Live Graph Update
+          
             if not frame_plot_df.empty:
                 fig = px.scatter(
                     frame_plot_df, x="X", y="Y", color="Finger",
@@ -114,7 +113,7 @@ if uploaded_file is not None:
             st.rerun()
 
     else:
-        # --- STATIC INTERACTION MODE (When Paused) ---
+       
         manual_frame = slider_placeholder.slider("Timeline Frame Index", 0, max_frames, st.session_state.current_frame)
         st.session_state.current_frame = manual_frame
         
