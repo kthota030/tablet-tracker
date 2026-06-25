@@ -47,8 +47,7 @@ if uploaded_file is not None:
     if "current_frame" not in st.session_state:
         st.session_state.current_frame = 0
 
-    st.subheader(f"Detected {len(valid_finger_ids)} Tracked Fingers")
-    
+   
     max_frames = len(filtered_df) - 1
 
 
