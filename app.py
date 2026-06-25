@@ -52,38 +52,37 @@ if uploaded_file is not None:
     max_frames = len(filtered_df) - 1
 
     # --- CONTROL BUTTON ---
-    # Toggle play state
     if st.button("▶ Play" if not st.session_state.playing else "⏸ Pause"):
         st.session_state.playing = not st.session_state.playing
 
     # --- LIVE RENDER CONTAINERS ---
-    # We create empty layout blocks so that updates stream live to the browser
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
     chart_placeholder = st.empty()
 
-    # Dynamic limits for layout graphing boxes
+    # --- GLOBAL BOUNDS (Locked for the entire dataset) ---
     max_x = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
-    max_y = float(len(filtered_df))
+    # Finds the true highest Y value across all coordinates in the whole file
+    max_y = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
+    
     time_col = df.columns[0]
 
     # --- ANIMATION RUN STATE TRACKER ---
     if st.session_state.playing:
-        # Loop forward from where the state currently sits
         for f in range(st.session_state.current_frame, max_frames + 1):
             if not st.session_state.playing:
                 break
             
             st.session_state.current_frame = f
             
-            # 1. Update Slider UI Element Visuals
+            # 1. Update Slider UI
             slider_placeholder.slider("Timeline Frame Index", 0, max_frames, f, key=f"play_slider_{f}")
             
             # 2. Update Timestamp Text
             current_row = filtered_df.iloc[f]
             time_placeholder.write(f"**Current Frame Timestamp:** `{current_row[time_col]}`")
             
-            # 3. Extract and Build Plotting DataFrame
+            # 3. Extract Plotting DataFrame
             plot_data = []
             for fid in valid_finger_ids:
                 x_val = current_row[x_cols[fid]]
@@ -93,21 +92,20 @@ if uploaded_file is not None:
             
             frame_plot_df = pd.DataFrame(plot_data)
             
-            # 4. Render Live Graph Update inside placeholder
+            # 4. Render Live Graph Update
             if not frame_plot_df.empty:
                 fig = px.scatter(
                     frame_plot_df, x="X", y="Y", color="Finger",
-                    range_x=[0, max_x], range_y=[0, max_y],
+                    range_x=[0, max_x], 
+                    range_y=[max_y, 0],  # FIXED: Locks max value at bottom and 0 at the very top
                     title=f"Live Coordinates - Frame {f}"
                 )
-                fig.update_yaxes(autorange="reversed")
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"live_chart_{f}")
             else:
                 chart_placeholder.info("No active coordinate data points to draw for this specific frame.")
                 
             time.sleep(0.05)
             
-        # Reset toggle automatically if it reaches the end frame
         if st.session_state.current_frame >= max_frames:
             st.session_state.playing = False
             st.session_state.current_frame = 0
@@ -115,7 +113,6 @@ if uploaded_file is not None:
 
     else:
         # --- STATIC INTERACTION MODE (When Paused) ---
-        # Allow the user to drag the slider manually
         manual_frame = slider_placeholder.slider("Timeline Frame Index", 0, max_frames, st.session_state.current_frame)
         st.session_state.current_frame = manual_frame
         
@@ -134,10 +131,10 @@ if uploaded_file is not None:
         if not frame_plot_df.empty:
             fig = px.scatter(
                 frame_plot_df, x="X", y="Y", color="Finger",
-                range_x=[0, max_x], range_y=[0, max_y],
+                range_x=[0, max_x], 
+                range_y=[max_y, 0],  # FIXED: Locks max value at bottom and 0 at the very top
                 title=f"Live Coordinates - Frame {manual_frame}"
             )
-            fig.update_yaxes(autorange="reversed")
             chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"static_chart_{manual_frame}")
         else:
             chart_placeholder.info("No active coordinate data points to draw for this specific frame.")
