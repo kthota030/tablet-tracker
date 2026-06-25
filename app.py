@@ -115,6 +115,12 @@ if uploaded_file is not None:
             title=f"Live Coordinates - Frame {st.session_state.current_frame}"
         )
         fig.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig, use_container_width=True)
+        
+        # FIXED: Added a dynamic key based on the frame number to force updates
+        st.plotly_chart(
+            fig, 
+            use_container_width=True, 
+            key=f"chart_frame_{st.session_state.current_frame}"
+        )
     else:
         st.info("No active coordinate data points to draw for this specific frame.")
