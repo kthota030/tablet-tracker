@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import matplotlib.pyplot as plt
+import matplotlib
 import time
 import io
+import numpy as np
+from PIL import Image
 
 st.title("Tablet Tracking System")
 
@@ -57,56 +61,79 @@ if uploaded_file is not None:
         max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         
-        with st.spinner("Generating animation file..."):
-            export_data = []
-            virtual_frame_counter = 0
-            
-            for f_idx in range(len(filtered_df)):
-                r_data = filtered_df.iloc[f_idx]
-                frame_points = []
+        if st.button("📥 Generate and Download Animated GIF"):
+            with st.spinner("Compiling animated GIF (this may take a moment)..."):
+                gif_images = []
                 
-                for fid in valid_finger_ids:
-                    x_v = r_data[x_cols[fid]]
-                    y_v = r_data[y_cols[fid]]
-                    if pd.notna(x_v) and pd.notna(y_v) and (x_v != 0 or y_v != 0):
-                        frame_points.append({
-                            "Timestamp": r_data[df.columns[0]],
-                            "Finger": f"Finger {fid}",
-                            "X": float(x_v),
-                            "Y": float(y_v)
-                        })
+                # Setup hidden Matplotlib figure canvas for background rendering
+                fig, ax = plt.subplots(figsize=(6, 5), dpi=100)
+                cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
                 
-                if frame_points:
-                    for pt in frame_points:
-                        pt["Animation_Frame"] = virtual_frame_counter
-                    export_data.extend(frame_points)
-                    virtual_frame_counter += 1
+                for f_idx in range(len(filtered_df)):
+                    current_row = filtered_df.iloc[f_idx]
+                    
+                    # Verify if this specific frame contains any active non-zero data points
+                    frame_has_valid_data = False
+                    for fid in valid_finger_ids:
+                        x_v = current_row[x_cols[fid]]
+                        y_v = current_row[y_cols[fid]]
+                        if pd.notna(x_v) and pd.notna(y_v) and (x_v != 0 or y_v != 0):
+                            frame_has_valid_data = True
+                            break
+                    
+                    # Skip frames that have no visible coordinates
+                    if not frame_has_valid_data:
+                        continue
                         
-            export_df = pd.DataFrame(export_data)
-            
-            if not export_df.empty:
-                fig_html = px.scatter(
-                    export_df, x="X", y="Y", color="Finger",
-                    animation_frame="Animation_Frame",
-                    range_x=[0, max_x_all], range_y=[max_y_all, 0],
-                    title="Tablet Tracking System - Research Export"
-                )
+                    ax.clear()
+                    ax.set_xlim(0, max_x_all)
+                    ax.set_ylim(max_y_all, 0)
+                    ax.set_xlabel("X Coordinate (px)", fontweight='bold')
+                    ax.set_ylabel("Y Coordinate (px)", fontweight='bold')
+                    ax.set_title(f"Trajectory Animation - Frame {f_idx}", fontweight='bold')
+                    ax.grid(True, linestyle='--', alpha=0.5)
+                    
+                    # Plot every active finger marker concurrently for this timestamp frame
+                    for idx, fid in enumerate(valid_finger_ids):
+                        x_v = current_row[x_cols[fid]]
+                        y_v = current_row[y_cols[fid]]
+                        if pd.notna(x_v) and pd.notna(y_v) and (x_v != 0 or y_v != 0):
+                            ax.scatter(float(x_v), float(y_v), label=f"Finger {fid}", color=cmap(idx), s=80, edgecolors='black', zorder=3)
+                    
+                    # Deduplicate legend items
+                    handles, labels = ax.get_legend_handles_labels()
+                    by_label = dict(zip(labels, handles))
+                    ax.legend(by_label.values(), by_label.keys(), loc="upper right")
+                    
+                    # Save snapshot to an image frame buffer array
+                    frame_buf = io.BytesIO()
+                    plt.savefig(frame_buf, format='png', bbox_inches='tight')
+                    frame_buf.seek(0)
+                    gif_images.append(Image.open(frame_buf))
                 
-                fig_html.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 20
-                fig_html.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 5
+                plt.close(fig)
                 
-                buffer = io.StringIO()
-                fig_html.write_html(buffer, include_plotlyjs="cdn")
-                html_bytes = buffer.getvalue().encode()
-                
-                st.download_button(
-                    label="📥 Download Animated Export (.html)",
-                    data=html_bytes,
-                    file_name="tracking_trajectory_animation.html",
-                    mime="text/html"
-                )
-            else:
-                st.write("No coordinates available to generate export file.")
+                if gif_images:
+                    gif_buf = io.BytesIO()
+                    # Compile the image array sequence into a single loopable GIF file container
+                    gif_images[0].save(
+                        gif_buf,
+                        format='GIF',
+                        save_all=True,
+                        append_images=gif_images[1:],
+                        duration=40,  # Speed adjustment: 40ms per frame produces a fast frame rate animation
+                        loop=0
+                    )
+                    gif_buf.seek(0)
+                    
+                    st.download_button(
+                        label="Click here to save tracking_trajectory.gif",
+                        data=gif_buf.getvalue(),
+                        file_name="tracking_trajectory.gif",
+                        mime="image/gif"
+                    )
+                else:
+                    st.error("No valid multi-finger tracking coordinate matrices detected to export.")
 
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
