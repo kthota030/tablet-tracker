@@ -75,7 +75,7 @@ if uploaded_file is not None:
                             "Y": float(y_v)
                         })
                 
-                # Only include frames that actually contain active non-zero finger movements
+             
                 if frame_points:
                     for pt in frame_points:
                         pt["Animation_Frame"] = virtual_frame_counter
@@ -92,12 +92,12 @@ if uploaded_file is not None:
                     title="Tablet Tracking System - Research Export"
                 )
                 
-                # Force animation configuration to run ultra fast and loop infinitely
+              
                 fig_html.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 15
                 fig_html.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 0
                 fig_html.layout.updatemenus[0].buttons[0].args[1]["fromcurrent"] = True
                 
-                # Hide the massive frame slider under the chart for a cleaner look
+               
                 fig_html.update_layout(sliders=[])
                 
                 buffer = io.StringIO()
