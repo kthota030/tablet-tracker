@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import matplotlib.pyplot as plt
 import time
 import io
+import imageio.v2 as imageio
+import numpy as np
 
 st.title("Tablet Tracking System")
 
@@ -57,40 +60,43 @@ if uploaded_file is not None:
         max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         
-        export_data = []
-        for f_idx in range(len(filtered_df)):
-            r_data = filtered_df.iloc[f_idx]
-            for fid in valid_finger_ids:
-                x_v = r_data[x_cols[fid]]
-                y_v = r_data[y_cols[fid]]
-                if pd.notna(x_v) and pd.notna(y_v) and (x_v != 0 or y_v != 0):
-                    export_data.append({
-                        "Frame": f_idx,
-                        "Timestamp": r_data[df.columns[0]],
-                        "Finger": f"Finger {fid}",
-                        "X": float(x_v),
-                        "Y": float(y_v)
-                    })
-        export_df = pd.DataFrame(export_data)
+        fig, ax = plt.subplots(figsize=(6, 5), dpi=300)
         
-        if not export_df.empty:
-            fig_html = px.scatter(
-                export_df, x="X", y="Y", color="Finger",
-                animation_frame="Frame",
-                range_x=[0, max_x_all], range_y=[max_y_all, 0],
-                title="Tablet Tracking System - Research Export"
-            )
+        cmap = plt.cm.viridis
+        colors = [cmap(i) for i in np.linspace(0, 0.8, len(valid_finger_ids))]
+        
+        for idx, fid in enumerate(valid_finger_ids):
+            x_data = filtered_df[x_cols[fid]].values
+            y_data = filtered_df[y_cols[fid]].values
             
-            buffer = io.StringIO()
-            fig_html.write_html(buffer, include_plotlyjs="cdn")
-            html_bytes = buffer.getvalue().encode()
+            valid_pts = (x_data != 0) & (y_data != 0) & (pd.notna(x_data)) & (pd.notna(y_data))
             
-            st.download_button(
-                label="📥 Download Interactive Figure (.html)",
-                data=html_bytes,
-                file_name="tracking_animation_export.html",
-                mime="text/html"
-            )
+            if np.any(valid_pts):
+                ax.plot(x_data[valid_pts], y_data[valid_pts], label=f"Finger {fid}", 
+                        color=colors[idx], linewidth=1.5, alpha=0.8)
+                ax.scatter(x_data[valid_pts][-1], y_data[valid_pts][-1], 
+                           color=colors[idx], s=30, edgecolors='black', zorder=5)
+        
+        ax.set_xlim(0, max_x_all)
+        ax.set_ylim(max_y_all, 0)
+        ax.set_xlabel("X Coordinate (px)", fontsize=10, fontweight='bold')
+        ax.set_ylabel("Y Coordinate (px)", fontsize=10, fontweight='bold')
+        ax.set_title("Finger Movement Trajectory Map", fontsize=11, fontweight='bold', pad=10)
+        ax.grid(True, linestyle='--', alpha=0.5)
+        ax.legend(frameon=True, facecolor='white', edgecolor='none', fontsize=8)
+        plt.tight_layout()
+        
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf, format='png', dpi=300)
+        img_buf.seek(0)
+        plt.close(fig)
+        
+        st.download_button(
+            label="📥 Download Journal Figure (High-Res .png)",
+            data=img_buf,
+            file_name="trajectory_map_figure.png",
+            mime="image/png"
+        )
 
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
