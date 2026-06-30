@@ -1,12 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import matplotlib
 import time
 import io
-import numpy as np
 
 st.title("Tablet Tracking System")
 
@@ -61,48 +57,56 @@ if uploaded_file is not None:
         max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         
-        with st.spinner("Generating publication animation..."):
-            fig, ax = plt.subplots(figsize=(6, 5))
-            ax.set_xlim(0, max_x_all)
-            ax.set_ylim(max_y_all, 0)
-            ax.set_xlabel("X Coordinate (px)", fontweight='bold')
-            ax.set_ylabel("Y Coordinate (px)", fontweight='bold')
-            ax.grid(True, linestyle='--', alpha=0.5)
+        with st.spinner("Generating animation file..."):
+            export_data = []
+            virtual_frame_counter = 0
             
-            scatters = {}
-            # FIXED: Updated to use the modern colormap lookup tool
-            cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
-            for idx, fid in enumerate(valid_finger_ids):
-                scatters[fid] = ax.scatter([], [], label=f"Finger {fid}", color=cmap(idx), s=40, edgecolors='black')
-            ax.legend(loc="upper right")
-            
-            def update(frame):
-                current_row = filtered_df.iloc[frame]
-                artists = []
+            for f_idx in range(len(filtered_df)):
+                r_data = filtered_df.iloc[f_idx]
+                frame_points = []
+                
                 for fid in valid_finger_ids:
-                    x_val = current_row[x_cols[fid]]
-                    y_val = current_row[y_cols[fid]]
-                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                        scatters[fid].set_offsets([[float(x_val), float(y_val)]])
-                    else:
-                        scatters[fid].set_offsets(np.empty((0, 2)))
-                    artists.append(scatters[fid])
-                ax.set_title(f"Live Coordinates - Frame {frame}", fontweight='bold')
-                return artists
-
-            ani = animation.FuncAnimation(fig, update, frames=len(filtered_df), interval=50, blit=True)
+                    x_v = r_data[x_cols[fid]]
+                    y_v = r_data[y_cols[fid]]
+                    if pd.notna(x_v) and pd.notna(y_v) and (x_v != 0 or y_v != 0):
+                        frame_points.append({
+                            "Timestamp": r_data[df.columns[0]],
+                            "Finger": f"Finger {fid}",
+                            "X": float(x_v),
+                            "Y": float(y_v)
+                        })
+                
+                if frame_points:
+                    for pt in frame_points:
+                        pt["Animation_Frame"] = virtual_frame_counter
+                    export_data.extend(frame_points)
+                    virtual_frame_counter += 1
+                        
+            export_df = pd.DataFrame(export_data)
             
-            video_buf = io.BytesIO()
-            ani.save(video_buf, writer='html', fps=20)
-            video_buf.seek(0)
-            plt.close(fig)
-            
-            st.download_button(
-                label="📥 Download Animated Export (.html)",
-                data=video_buf,
-                file_name="tracking_trajectory_animation.html",
-                mime="text/html"
-            )
+            if not export_df.empty:
+                fig_html = px.scatter(
+                    export_df, x="X", y="Y", color="Finger",
+                    animation_frame="Animation_Frame",
+                    range_x=[0, max_x_all], range_y=[max_y_all, 0],
+                    title="Tablet Tracking System - Research Export"
+                )
+                
+                fig_html.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 20
+                fig_html.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 5
+                
+                buffer = io.StringIO()
+                fig_html.write_html(buffer, include_plotlyjs="cdn")
+                html_bytes = buffer.getvalue().encode()
+                
+                st.download_button(
+                    label="📥 Download Animated Export (.html)",
+                    data=html_bytes,
+                    file_name="tracking_trajectory_animation.html",
+                    mime="text/html"
+                )
+            else:
+                st.write("No coordinates available to generate export file.")
 
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
