@@ -4,7 +4,6 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import time
 import io
-import imageio.v2 as imageio
 import numpy as np
 
 st.title("Tablet Tracking System")
