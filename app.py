@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import time
 import io
 import numpy as np
@@ -59,43 +60,48 @@ if uploaded_file is not None:
         max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
         
-        fig, ax = plt.subplots(figsize=(6, 5), dpi=300)
-        
-        cmap = plt.cm.viridis
-        colors = [cmap(i) for i in np.linspace(0, 0.8, len(valid_finger_ids))]
-        
-        for idx, fid in enumerate(valid_finger_ids):
-            x_data = filtered_df[x_cols[fid]].values
-            y_data = filtered_df[y_cols[fid]].values
+        with st.spinner("Generating publication animation..."):
+            fig, ax = plt.subplots(figsize=(6, 5))
+            ax.set_xlim(0, max_x_all)
+            ax.set_ylim(max_y_all, 0)
+            ax.set_xlabel("X Coordinate (px)", fontweight='bold')
+            ax.set_ylabel("Y Coordinate (px)", fontweight='bold')
+            ax.grid(True, linestyle='--', alpha=0.5)
             
-            valid_pts = (x_data != 0) & (y_data != 0) & (pd.notna(x_data)) & (pd.notna(y_data))
+            scatters = {}
+            cmap = plt.cm.get_cmap('viridis', len(valid_finger_ids))
+            for idx, fid in enumerate(valid_finger_ids):
+                scatters[fid] = ax.scatter([], [], label=f"Finger {fid}", color=cmap(idx), s=40, edgecolors='black')
+            ax.legend(loc="upper right")
             
-            if np.any(valid_pts):
-                ax.plot(x_data[valid_pts], y_data[valid_pts], label=f"Finger {fid}", 
-                        color=colors[idx], linewidth=1.5, alpha=0.8)
-                ax.scatter(x_data[valid_pts][-1], y_data[valid_pts][-1], 
-                           color=colors[idx], s=30, edgecolors='black', zorder=5)
-        
-        ax.set_xlim(0, max_x_all)
-        ax.set_ylim(max_y_all, 0)
-        ax.set_xlabel("X Coordinate (px)", fontsize=10, fontweight='bold')
-        ax.set_ylabel("Y Coordinate (px)", fontsize=10, fontweight='bold')
-        ax.set_title("Finger Movement Trajectory Map", fontsize=11, fontweight='bold', pad=10)
-        ax.grid(True, linestyle='--', alpha=0.5)
-        ax.legend(frameon=True, facecolor='white', edgecolor='none', fontsize=8)
-        plt.tight_layout()
-        
-        img_buf = io.BytesIO()
-        plt.savefig(img_buf, format='png', dpi=300)
-        img_buf.seek(0)
-        plt.close(fig)
-        
-        st.download_button(
-            label="📥 Download Journal Figure (High-Res .png)",
-            data=img_buf,
-            file_name="trajectory_map_figure.png",
-            mime="image/png"
-        )
+            def update(frame):
+                current_row = filtered_df.iloc[frame]
+                artists = []
+                for fid in valid_finger_ids:
+                    x_val = current_row[x_cols[fid]]
+                    y_val = current_row[y_cols[fid]]
+                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                        scatters[fid].set_offsets([[float(x_val), float(y_val)]])
+                    else:
+                        scatters[fid].set_offsets(np.empty((0, 2)))
+                    artists.append(scatters[fid])
+                ax.set_title(f"Live Coordinates - Frame {frame}", fontweight='bold')
+                return artists
+
+            ani = animation.FuncAnimation(fig, update, frames=len(filtered_df), interval=50, blit=True)
+            
+            video_buf = io.BytesIO()
+            # Saves as an HTML5 compatible video format easily readable by modern document structures
+            ani.save(video_buf, writer='html', fps=20)
+            video_buf.seek(0)
+            plt.close(fig)
+            
+            st.download_button(
+                label="📥 Download Animated Export (.html)",
+                data=video_buf,
+                file_name="tracking_trajectory_animation.html",
+                mime="text/html"
+            )
 
     slider_placeholder = st.empty()
     time_placeholder = st.empty()
