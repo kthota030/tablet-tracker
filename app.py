@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib
 import time
 import io
 import numpy as np
@@ -69,7 +70,8 @@ if uploaded_file is not None:
             ax.grid(True, linestyle='--', alpha=0.5)
             
             scatters = {}
-            cmap = plt.cm.get_cmap('viridis', len(valid_finger_ids))
+            # FIXED: Updated to use the modern colormap lookup tool
+            cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
             for idx, fid in enumerate(valid_finger_ids):
                 scatters[fid] = ax.scatter([], [], label=f"Finger {fid}", color=cmap(idx), s=40, edgecolors='black')
             ax.legend(loc="upper right")
@@ -91,7 +93,6 @@ if uploaded_file is not None:
             ani = animation.FuncAnimation(fig, update, frames=len(filtered_df), interval=50, blit=True)
             
             video_buf = io.BytesIO()
-            # Saves as an HTML5 compatible video format easily readable by modern document structures
             ani.save(video_buf, writer='html', fps=20)
             video_buf.seek(0)
             plt.close(fig)
