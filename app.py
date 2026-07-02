@@ -71,12 +71,13 @@ if uploaded_file is not None:
                         current_ts = current_row[time_col]
                         
                         ax.clear()
+                        ax.set_facecolor('#f8f9fa')
                         ax.set_xlim(0, max_x_all)
                         ax.set_ylim(max_y_all, 0)
                         ax.set_xlabel("X (px)")
                         ax.set_ylabel("Y (px)")
                         ax.set_title(f"Timestamp: {current_ts}")
-                        ax.grid(True, linestyle='--', alpha=0.5)
+                        ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7)
                         
                         for idx, fid in enumerate(valid_finger_ids):
                             x_v = current_row[x_cols[fid]]
@@ -125,7 +126,7 @@ if uploaded_file is not None:
                 
                 frame_plot_df = pd.DataFrame(plot_data)
                 if not frame_plot_df.empty:
-                    fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0])
+                    fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
                     chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_l_{f}")
                 tm.sleep(0.05)
             if st.session_state.current_frame >= max_frames:
@@ -145,7 +146,7 @@ if uploaded_file is not None:
                     plot_data.append({"Finger": f"Finger {fid}", "X": float(x_val), "Y": float(y_val)})
             frame_plot_df = pd.DataFrame(plot_data)
             if not frame_plot_df.empty:
-                fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0])
+                fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_s_{m_frame}")
 
     elif analysis_type == "Standard Trend Over Time (Line Graph)":
@@ -160,15 +161,18 @@ if uploaded_file is not None:
                     
                     for f_idx in range(0, len(filtered_df), skip_factor):
                         ax.clear()
+                        ax.set_facecolor('#f8f9fa')
                         ax.set_xlim(0, max_x_all)
                         ax.set_ylim(max_y_all, 0)
                         ax.set_xlabel("X (px)")
                         ax.set_ylabel("Y (px)")
                         current_ts = filtered_df.iloc[f_idx][time_col]
                         ax.set_title(f"Timestamp: {current_ts}")
-                        ax.grid(True, linestyle='--', alpha=0.5)
+                        ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7)
                         
-                        history_df = filtered_df.iloc[0:f_idx + 1]
+                        # Only grab historical frames within the trailing window ceiling cut-off limit
+                        start_window = max(0, f_idx - 25)
+                        history_df = filtered_df.iloc[start_window:f_idx + 1]
                         
                         for idx, fid in enumerate(valid_finger_ids):
                             fx = history_df[x_cols[fid]].values
@@ -197,16 +201,21 @@ if uploaded_file is not None:
         with st.spinner("Generating plot..."):
             line_data = []
             for idx, row in filtered_df.iterrows():
+                # Capture frame sliding history rules natively within Plotly
+                start_frame = max(0, idx - 25)
+                window_df = filtered_df.iloc[start_frame:idx + 1]
+                
                 for fid in valid_finger_ids:
-                    x_val = row[x_cols[fid]]
-                    y_val = row[y_cols[fid]]
-                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                        line_data.append({
-                            "Timestamp": row[time_col],
-                            "Finger": f"Finger {fid}",
-                            "X Coordinate": float(x_val),
-                            "Y Coordinate": float(y_val)
-                        })
+                    for _, sub_row in window_df.iterrows():
+                        x_val = sub_row[x_cols[fid]]
+                        y_val = sub_row[y_cols[fid]]
+                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                            line_data.append({
+                                "Timestamp": row[time_col],
+                                "Finger": f"Finger {fid}",
+                                "X Coordinate": float(x_val),
+                                "Y Coordinate": float(y_val)
+                            })
             
             line_df = pd.DataFrame(line_data)
             
@@ -219,7 +228,8 @@ if uploaded_file is not None:
                     animation_frame="Timestamp",
                     range_x=[0, max_x_all],
                     range_y=[max_y_all, 0],
-                    title="Finger Path Movement Across Tablet Space"
+                    title="Finger Path Movement Across Tablet Space",
+                    template="plotly_white"
                 )
                 
                 fig_line.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 30
