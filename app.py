@@ -47,7 +47,9 @@ if uploaded_file is not None:
     max_frames = len(filtered_df) - 1
     max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
-    skip_factor = 5
+    
+    # Increased skip factor makes GIF compilation twice as fast
+    skip_factor = 10 
 
     if analysis_type == "Tablet Tracking Coordinates (X/Y Map)":
         col_btn1, col_btn2 = st.columns([1, 1])
@@ -97,7 +99,7 @@ if uploaded_file is not None:
                     plt.close(fig)
                     if gif_images:
                         gif_buf = io.BytesIO()
-                        gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=60, loop=0)
+                        gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=100, loop=0)
                         st.download_button(label="Download tracking_trajectory.gif", data=gif_buf.getvalue(), file_name="tracking_trajectory.gif", mime="image/gif")
 
         slider_placeholder = st.empty()
@@ -170,7 +172,6 @@ if uploaded_file is not None:
                         ax.set_title(f"Timestamp: {current_ts}")
                         ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7)
                         
-                        # Only grab historical frames within the trailing window ceiling cut-off limit
                         start_window = max(0, f_idx - 25)
                         history_df = filtered_df.iloc[start_window:f_idx + 1]
                         
@@ -195,46 +196,45 @@ if uploaded_file is not None:
                     plt.close(fig)
                     if gif_images:
                         gif_buf = io.BytesIO()
-                        gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=60, loop=0)
+                        gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=100, loop=0)
                         st.download_button(label="Download line_trajectory.gif", data=gif_buf.getvalue(), file_name="line_trajectory.gif", mime="image/gif")
 
-        with st.spinner("Generating plot..."):
-            line_data = []
-            for idx, row in filtered_df.iterrows():
-                # Capture frame sliding history rules natively within Plotly
-                start_frame = max(0, idx - 25)
-                window_df = filtered_df.iloc[start_frame:idx + 1]
-                
-                for fid in valid_finger_ids:
-                    for _, sub_row in window_df.iterrows():
-                        x_val = sub_row[x_cols[fid]]
-                        y_val = sub_row[y_cols[fid]]
-                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                            line_data.append({
-                                "Timestamp": row[time_col],
-                                "Finger": f"Finger {fid}",
-                                "X Coordinate": float(x_val),
-                                "Y Coordinate": float(y_val)
-                            })
+        # Removed spinner here completely to make UI snap instantly
+        line_data = []
+        for idx, row in filtered_df.iterrows():
+            start_frame = max(0, idx - 25)
+            window_df = filtered_df.iloc[start_frame:idx + 1]
             
-            line_df = pd.DataFrame(line_data)
+            for fid in valid_finger_ids:
+                for _, sub_row in window_df.iterrows():
+                    x_val = sub_row[x_cols[fid]]
+                    y_val = sub_row[y_cols[fid]]
+                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                        line_data.append({
+                            "Timestamp": row[time_col],
+                            "Finger": f"Finger {fid}",
+                            "X Coordinate": float(x_val),
+                            "Y Coordinate": float(y_val)
+                        })
+        
+        line_df = pd.DataFrame(line_data)
+        
+        if not line_df.empty:
+            fig_line = px.line(
+                line_df, 
+                x="X Coordinate", 
+                y="Y Coordinate", 
+                color="Finger",
+                animation_frame="Timestamp",
+                range_x=[0, max_x_all],
+                range_y=[max_y_all, 0],
+                title="Finger Path Movement Across Tablet Space",
+                template="plotly_white"
+            )
             
-            if not line_df.empty:
-                fig_line = px.line(
-                    line_df, 
-                    x="X Coordinate", 
-                    y="Y Coordinate", 
-                    color="Finger",
-                    animation_frame="Timestamp",
-                    range_x=[0, max_x_all],
-                    range_y=[max_y_all, 0],
-                    title="Finger Path Movement Across Tablet Space",
-                    template="plotly_white"
-                )
-                
-                fig_line.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 30
-                fig_line.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 0
-                
-                st.plotly_chart(fig_line, use_container_width=True)
-            else:
-                st.warning("No valid data available.")
+            fig_line.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 30
+            fig_line.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 0
+            
+            st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.warning("No valid data available.")
