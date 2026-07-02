@@ -47,8 +47,6 @@ if uploaded_file is not None:
     max_frames = len(filtered_df) - 1
     max_x_all = filtered_df[[x_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
-    
-    # Increased skip factor makes GIF compilation twice as fast
     skip_factor = 10 
 
     if analysis_type == "Tablet Tracking Coordinates (X/Y Map)":
@@ -199,23 +197,18 @@ if uploaded_file is not None:
                         gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=100, loop=0)
                         st.download_button(label="Download line_trajectory.gif", data=gif_buf.getvalue(), file_name="line_trajectory.gif", mime="image/gif")
 
-        # Removed spinner here completely to make UI snap instantly
         line_data = []
         for idx, row in filtered_df.iterrows():
-            start_frame = max(0, idx - 25)
-            window_df = filtered_df.iloc[start_frame:idx + 1]
-            
             for fid in valid_finger_ids:
-                for _, sub_row in window_df.iterrows():
-                    x_val = sub_row[x_cols[fid]]
-                    y_val = sub_row[y_cols[fid]]
-                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                        line_data.append({
-                            "Timestamp": row[time_col],
-                            "Finger": f"Finger {fid}",
-                            "X Coordinate": float(x_val),
-                            "Y Coordinate": float(y_val)
-                        })
+                x_val = row[x_cols[fid]]
+                y_val = row[y_cols[fid]]
+                if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                    line_data.append({
+                        "Timestamp": row[time_col],
+                        "Finger": f"Finger {fid}",
+                        "X Coordinate": float(x_val),
+                        "Y Coordinate": float(y_val)
+                    })
         
         line_df = pd.DataFrame(line_data)
         
