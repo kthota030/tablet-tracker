@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 import matplotlib
-import time
 import io
 import numpy as np
 from PIL import Image
@@ -64,10 +63,9 @@ if uploaded_file is not None:
                 
         with col_btn2:
             st.write("### GIF Settings")
-            skip_factor = st.slider("GIF Frame Skip (Higher = Lower RAM Usage)", min_value=1, max_value=20, value=5)
+            skip_factor = 5
             
-            if st.button("📥 Export as Animated GIF"):
-                # Changed to simple text
+            if st.button("Export as Animated GIF"):
                 with st.spinner("Processing frames..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
@@ -182,17 +180,55 @@ if uploaded_file is not None:
     elif analysis_type == "Standard Trend Over Time (Line Graph)":
         st.write("### General Time-Series Trend Configuration")
         time_col = df.columns[0]
-        st.write(f"Using `{time_col}` as timeline base axis.")
         
-        # Automatically grab all columns that aren't the primary time reference index column
-        auto_value_cols = [c for c in df.columns if c != time_col]
-        
-        if len(auto_value_cols) > 0:
-            # Changed to simple text
-            with st.spinner("Generating plot..."):
-                melted_df = df.melt(id_vars=[time_col], value_vars=auto_value_cols, var_name="Metric", value_name="Value")
+        x_cols = {}
+        y_cols = {}
+        for col in df.columns:
+            col_clean = str(col).strip().lower()
+            if col_clean.startswith('x') and col_clean[1:].isdigit():
+                x_cols[int(col_clean[1:])] = col
+            elif col_clean.startswith('y') and col_clean[1:].isdigit():
+                y_cols[int(col_clean[1:])] = col
                 
-                fig_line = px.line(melted_df, x=time_col, y="Value", color="Metric", title="All Tracking Metrics Over Time")
-                st.plotly_chart(fig_line, use_container_width=True)
+        valid_finger_ids = sorted([fid for fid in x_cols if fid in y_cols])
+        
+        if valid_finger_ids:
+            with st.spinner("Generating plot..."):
+                line_data = []
+                for idx, row in df.iterrows():
+                    for fid in valid_finger_ids:
+                        x_val = row[x_cols[fid]]
+                        y_val = row[y_cols[fid]]
+                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                            line_data.append({
+                                "Frame": idx,
+                                "Finger": f"Finger {fid}",
+                                "X Coordinate": float(x_val),
+                                "Y Coordinate": float(y_val)
+                            })
+                
+                line_df = pd.DataFrame(line_data)
+                
+                if not line_df.empty:
+                    max_x = line_df["X Coordinate"].max() * 1.1
+                    max_y = line_df["Y Coordinate"].max() * 1.1
+                    
+                    fig_line = px.line(
+                        line_df, 
+                        x="X Coordinate", 
+                        y="Y Coordinate", 
+                        color="Finger",
+                        animation_frame="Frame",
+                        range_x=[0, max_x],
+                        range_y=[max_y, 0],
+                        title="Finger Path Movement Across Tablet Space"
+                    )
+                    
+                    fig_line.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 20
+                    fig_line.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 0
+                    
+                    st.plotly_chart(fig_line, use_container_width=True)
+                else:
+                    st.warning("No valid non-zero trajectory paths found to trace.")
         else:
-            st.warning("No data series metrics found to draw.")
+            st.warning("Could not automatically discover structured X/Y tracking metrics.")
