@@ -67,7 +67,8 @@ if uploaded_file is not None:
             skip_factor = st.slider("GIF Frame Skip (Higher = Lower RAM Usage)", min_value=1, max_value=20, value=5)
             
             if st.button("📥 Export as Animated GIF"):
-                with st.spinner("Compiling downsampled animated GIF safely..."):
+                # Changed to simple text
+                with st.spinner("Processing frames..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
                     cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
@@ -123,7 +124,7 @@ if uploaded_file is not None:
                         )
                         gif_buf.seek(0)
                         st.download_button(
-                            label="🚀 Download safe_trajectory.gif",
+                            label="Download safe_trajectory.gif",
                             data=gif_buf.getvalue(),
                             file_name="tracking_trajectory.gif",
                             mime="image/gif"
@@ -180,11 +181,18 @@ if uploaded_file is not None:
 
     elif analysis_type == "Standard Trend Over Time (Line Graph)":
         st.write("### General Time-Series Trend Configuration")
-        time_col = st.selectbox("Select Timeline Axis (X-Axis)", options=df.columns, index=0)
-        value_cols = st.multiselect("Select Value Columns to Track (Y-Axis)", options=[c for c in df.columns if c != time_col])
+        time_col = df.columns[0]
+        st.write(f"Using `{time_col}` as timeline base axis.")
         
-        if time_col and value_cols:
-            melted_df = df.melt(id_vars=[time_col], value_vars=value_cols, var_name="Metric", value_name="Value")
-            
-            fig_line = px.line(melted_df, x=time_col, y="Value", color="Metric", title="Universal General Time-Series Trend Review")
-            st.plotly_chart(fig_line, use_container_width=True)
+        # Automatically grab all columns that aren't the primary time reference index column
+        auto_value_cols = [c for c in df.columns if c != time_col]
+        
+        if len(auto_value_cols) > 0:
+            # Changed to simple text
+            with st.spinner("Generating plot..."):
+                melted_df = df.melt(id_vars=[time_col], value_vars=auto_value_cols, var_name="Metric", value_name="Value")
+                
+                fig_line = px.line(melted_df, x=time_col, y="Value", color="Metric", title="All Tracking Metrics Over Time")
+                st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.warning("No data series metrics found to draw.")
