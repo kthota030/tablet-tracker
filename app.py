@@ -151,6 +151,13 @@ if uploaded_file is not None:
 
     elif analysis_type == "Standard Trend Over Time (Line Graph)":
         col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if "playing_line" not in st.session_state:
+                st.session_state.playing_line = False
+            button_label = "⏸ Pause" if st.session_state.playing_line else "▶ Play"
+            if st.button(button_label, key="play_line_btn"):
+                st.session_state.playing_line = not st.session_state.playing_line
+                st.rerun()
         
         with col_btn2:
             if st.button("Export Path as Animated GIF", key="gif_line"):
@@ -197,37 +204,68 @@ if uploaded_file is not None:
                         gif_images[0].save(gif_buf, format='GIF', save_all=True, append_images=gif_images[1:], duration=100, loop=0)
                         st.download_button(label="Download line_trajectory.gif", data=gif_buf.getvalue(), file_name="line_trajectory.gif", mime="image/gif")
 
-        line_data = []
-        for idx, row in filtered_df.iterrows():
-            for fid in valid_finger_ids:
-                x_val = row[x_cols[fid]]
-                y_val = row[y_cols[fid]]
-                if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                    line_data.append({
-                        "Timestamp": row[time_col],
-                        "Finger": f"Finger {fid}",
-                        "X Coordinate": float(x_val),
-                        "Y Coordinate": float(y_val)
-                    })
-        
-        line_df = pd.DataFrame(line_data)
-        
-        if not line_df.empty:
-            fig_line = px.line(
-                line_df, 
-                x="X Coordinate", 
-                y="Y Coordinate", 
-                color="Finger",
-                animation_frame="Timestamp",
-                range_x=[0, max_x_all],
-                range_y=[max_y_all, 0],
-                title="Finger Path Movement Across Tablet Space",
-                template="plotly_white"
-            )
-            
-            fig_line.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 30
-            fig_line.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 0
-            
-            st.plotly_chart(fig_line, use_container_width=True)
+        slider_placeholder = st.empty()
+        time_placeholder = st.empty()
+        chart_placeholder = st.empty()
+
+        if "current_line_frame" not in st.session_state:
+            st.session_state.current_line_frame = 0
+
+        if st.session_state.playing_line:
+            import time as tm
+            for f in range(st.session_state.current_line_frame, max_frames + 1):
+                if not st.session_state.playing_line:
+                    break
+                st.session_state.current_line_frame = f
+                slider_placeholder.slider("Timeline Index", 0, max_frames, f, key=f"line_sl_{f}")
+                current_row = filtered_df.iloc[f]
+                time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+                
+                start_frame = max(0, f - 25)
+                history_df = filtered_df.iloc[start_frame:f + 1]
+                
+                line_data = []
+                for fid in valid_finger_ids:
+                    for _, row in history_df.iterrows():
+                        x_val = row[x_cols[fid]]
+                        y_val = row[y_cols[fid]]
+                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                            line_data.append({
+                                "Finger": f"Finger {fid}",
+                                "X Coordinate": float(x_val),
+                                "Y Coordinate": float(y_val)
+                            })
+                
+                frame_line_df = pd.DataFrame(line_data)
+                if not frame_line_df.empty:
+                    fig = px.line(frame_line_df, x="X Coordinate", y="Y Coordinate", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_l_{f}")
+                tm.sleep(0.05)
+            if st.session_state.current_line_frame >= max_frames:
+                st.session_state.playing_line = False
+                st.session_state.current_line_frame = 0
+                st.rerun()
         else:
-            st.warning("No valid data available.")
+            m_frame = slider_placeholder.slider("Timeline Index", 0, max_frames, st.session_state.current_line_frame)
+            st.session_state.current_line_frame = m_frame
+            current_row = filtered_df.iloc[m_frame]
+            time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+            
+            start_frame = max(0, m_frame - 25)
+            history_df = filtered_df.iloc[start_frame:m_frame + 1]
+            
+            line_data = []
+            for fid in valid_finger_ids:
+                for _, row in history_df.iterrows():
+                    x_val = row[x_cols[fid]]
+                    y_val = row[y_cols[fid]]
+                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                        line_data.append({
+                            "Finger": f"Finger {fid}",
+                            "X Coordinate": float(x_val),
+                            "Y Coordinate": float(y_val)
+                        })
+            frame_line_df = pd.DataFrame(line_data)
+            if not frame_line_df.empty:
+                fig = px.line(frame_line_df, x="X Coordinate", y="Y Coordinate", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_s_{m_frame}")
