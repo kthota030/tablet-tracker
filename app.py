@@ -60,7 +60,7 @@ if uploaded_file is not None:
                 
         with col_btn2:
             if st.button("Export as Animated GIF", key="gif_coord"):
-                with st.spinner("Processing frames..."):
+                with st.spinner("Loading..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
                     cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
@@ -160,7 +160,7 @@ if uploaded_file is not None:
         
         with col_btn2:
             if st.button("Export as GIF", key="gif_line"):
-                with st.spinner("Processing frames..."):
+                with st.spinner("Loading..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
                     cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
