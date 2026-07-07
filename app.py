@@ -7,9 +7,9 @@ import io
 import numpy as np
 from PIL import Image
 
-st.title("Tablet Tracking Dashboard")
+st.title("Touchscreen Tracking")
 
-uploaded_file = st.file_uploader("Upload Tracking Data (.csv)", type=["csv"])
+uploaded_file = st.file_uploader("Upload Data (.csv)", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
