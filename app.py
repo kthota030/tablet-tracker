@@ -48,7 +48,7 @@ if uploaded_file is not None:
     max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     skip_factor = 10 
 
-    if analysis_type == "Scatterplot:
+    if analysis_type == "Scatterplot":
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if "playing" not in st.session_state:
