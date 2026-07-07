@@ -7,18 +7,17 @@ import io
 import numpy as np
 from PIL import Image
 
-st.title("Universal Time-Series Analysis System")
+st.title("Tablet Tracking Dashboard")
 
-uploaded_file = st.file_uploader("Upload Raw Tracking Data (.csv)", type=["csv"])
+uploaded_file = st.file_uploader("Upload Tracking Data (.csv)", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     time_col = df.columns[0]
     
-    st.write("### Analysis Configuration")
     analysis_type = st.selectbox(
-        "Select Time-Series Visualization Type",
-        options=["Tablet Tracking Coordinates (X/Y Map)", "Standard Trend Over Time (Line Graph)"]
+        "Select Time-Series Graph Type",
+        options=["Scatterplot", "Line Graph"]
     )
     
     x_cols = {}
@@ -49,7 +48,7 @@ if uploaded_file is not None:
     max_y_all = filtered_df[[y_cols[fid] for fid in valid_finger_ids]].max().max() * 1.1
     skip_factor = 10 
 
-    if analysis_type == "Tablet Tracking Coordinates (X/Y Map)":
+    if analysis_type == "Scatterplot:
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if "playing" not in st.session_state:
@@ -149,7 +148,7 @@ if uploaded_file is not None:
                 fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_s_{m_frame}")
 
-    elif analysis_type == "Standard Trend Over Time (Line Graph)":
+    elif analysis_type == "Line Graph":
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if "playing_line" not in st.session_state:
@@ -160,7 +159,7 @@ if uploaded_file is not None:
                 st.rerun()
         
         with col_btn2:
-            if st.button("Export Path as Animated GIF", key="gif_line"):
+            if st.button("Export as GIF", key="gif_line"):
                 with st.spinner("Processing frames..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
