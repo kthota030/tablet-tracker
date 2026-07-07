@@ -75,7 +75,7 @@ if uploaded_file is not None:
                         ax.set_ylim(max_y_all, 0)
                         ax.set_xlabel("X (px)")
                         ax.set_ylabel("Y (px)")
-                        ax.set_title(f"Timestamp: {current_ts}")
+                        ax.set_title(f"Time: {current_ts}")
                         ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7)
                         
                         for idx, fid in enumerate(valid_finger_ids):
@@ -173,7 +173,7 @@ if uploaded_file is not None:
                         ax.set_xlabel("X (px)")
                         ax.set_ylabel("Y (px)")
                         current_ts = filtered_df.iloc[f_idx][time_col]
-                        ax.set_title(f"Timestamp: {current_ts}")
+                        ax.set_title(f"Time: {current_ts}")
                         ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7)
                         
                         start_window = max(0, f_idx - 25)
