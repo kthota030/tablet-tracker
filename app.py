@@ -114,7 +114,7 @@ if uploaded_file is not None:
                 st.session_state.current_frame = f
                 slider_placeholder.slider("Timeline Index", 0, max_frames, f, key=f"play_sl_{f}")
                 current_row = filtered_df.iloc[f]
-                time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+                time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
                 
                 plot_data = []
                 for fid in valid_finger_ids:
@@ -136,7 +136,7 @@ if uploaded_file is not None:
             m_frame = slider_placeholder.slider("Timeline Index", 0, max_frames, st.session_state.current_frame)
             st.session_state.current_frame = m_frame
             current_row = filtered_df.iloc[m_frame]
-            time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+            time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
             plot_data = []
             for fid in valid_finger_ids:
                 x_val = current_row[x_cols[fid]]
@@ -218,7 +218,7 @@ if uploaded_file is not None:
                 st.session_state.current_line_frame = f
                 slider_placeholder.slider("Timeline Index", 0, max_frames, f, key=f"line_sl_{f}")
                 current_row = filtered_df.iloc[f]
-                time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+                time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
                 
                 start_frame = max(0, f - 25)
                 history_df = filtered_df.iloc[start_frame:f + 1]
@@ -248,7 +248,7 @@ if uploaded_file is not None:
             m_frame = slider_placeholder.slider("Timeline Index", 0, max_frames, st.session_state.current_line_frame)
             st.session_state.current_line_frame = m_frame
             current_row = filtered_df.iloc[m_frame]
-            time_placeholder.write(f"**Current Timestamp:** `{current_row[time_col]}`")
+            time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
             
             start_frame = max(0, m_frame - 25)
             history_df = filtered_df.iloc[start_frame:m_frame + 1]
