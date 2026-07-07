@@ -112,7 +112,7 @@ if uploaded_file is not None:
                 if not st.session_state.playing:
                     break
                 st.session_state.current_frame = f
-                slider_placeholder.slider("Timeline Index", 0, max_frames, f, key=f"play_sl_{f}")
+                slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"play_sl_{f}")
                 current_row = filtered_df.iloc[f]
                 time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
                 
@@ -133,7 +133,7 @@ if uploaded_file is not None:
                 st.session_state.current_frame = 0
                 st.rerun()
         else:
-            m_frame = slider_placeholder.slider("Timeline Index", 0, max_frames, st.session_state.current_frame)
+            m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_frame)
             st.session_state.current_frame = m_frame
             current_row = filtered_df.iloc[m_frame]
             time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
@@ -216,7 +216,7 @@ if uploaded_file is not None:
                 if not st.session_state.playing_line:
                     break
                 st.session_state.current_line_frame = f
-                slider_placeholder.slider("Timeline Index", 0, max_frames, f, key=f"line_sl_{f}")
+                slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"line_sl_{f}")
                 current_row = filtered_df.iloc[f]
                 time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
                 
@@ -245,7 +245,7 @@ if uploaded_file is not None:
                 st.session_state.current_line_frame = 0
                 st.rerun()
         else:
-            m_frame = slider_placeholder.slider("Timeline Index", 0, max_frames, st.session_state.current_line_frame)
+            m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_line_frame)
             st.session_state.current_line_frame = m_frame
             current_row = filtered_df.iloc[m_frame]
             time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
