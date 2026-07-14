@@ -16,8 +16,14 @@ if uploaded_file is not None:
     time_col = df.columns[0]
     
     analysis_type = st.selectbox(
-        "Select Time-Series Graph Type",
-        options=["Scatterplot", "Line Graph"]
+        "Select Graph Type",
+        options=[
+            "Scatterplot", 
+            "Line Graph", 
+            "Density Heatmap", 
+            "Movement Speed Over Time", 
+            "Finger Active Time Comparison"
+        ]
     )
     
     x_cols = {}
@@ -53,7 +59,7 @@ if uploaded_file is not None:
         with col_btn1:
             if "playing" not in st.session_state:
                 st.session_state.playing = False
-            button_label = "⏸ Pause" if st.session_state.playing else "▶ Play"
+            button_label = "Pause" if st.session_state.playing else "Play"
             if st.button(button_label, key="play_coord"):
                 st.session_state.playing = not st.session_state.playing
                 st.rerun()
@@ -153,7 +159,7 @@ if uploaded_file is not None:
         with col_btn1:
             if "playing_line" not in st.session_state:
                 st.session_state.playing_line = False
-            button_label = "⏸ Pause" if st.session_state.playing_line else "▶ Play"
+            button_label = "Pause" if st.session_state.playing_line else "Play"
             if st.button(button_label, key="play_line_btn"):
                 st.session_state.playing_line = not st.session_state.playing_line
                 st.rerun()
@@ -268,3 +274,21 @@ if uploaded_file is not None:
             if not frame_line_df.empty:
                 fig = px.line(frame_line_df, x="X Coordinate", y="Y Coordinate", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_s_{m_frame}")
+
+    elif analysis_type == "Density Heatmap":
+        heatmap_data = []
+        for fid in valid_finger_ids:
+            for _, row in filtered_df.iterrows():
+                x_val = row[x_cols[fid]]
+                y_val = row[y_cols[fid]]
+                if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
+                    heatmap_data.append({"X": float(x_val), "Y": float(y_val)})
+        
+        heatmap_df = pd.DataFrame(heatmap_data)
+        if not heatmap_df.empty:
+            fig = px.density_heatmap(heatmap_df, x="X", y="Y", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white", title="Overall Touch Density")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No data available for heatmap.")
+
+    elif analysis_type == "
