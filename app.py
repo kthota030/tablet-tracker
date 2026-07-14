@@ -17,13 +17,7 @@ if uploaded_file is not None:
     
     analysis_type = st.selectbox(
         "Select Graph Type",
-        options=[
-            "Scatterplot", 
-            "Line Graph", 
-            "Density Heatmap", 
-            "Movement Speed Over Time", 
-            "Finger Active Time Comparison"
-        ]
+        options=["Scatterplot", "Line Graph"]
     )
     
     x_cols = {}
@@ -69,7 +63,7 @@ if uploaded_file is not None:
                 with st.spinner("Loading..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
-                    cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
+                    cmap = matplotlib.colormaps['Set1'].resampled(len(valid_finger_ids))
                     
                     for f_idx in range(0, len(filtered_df), skip_factor):
                         current_row = filtered_df.iloc[f_idx]
@@ -131,7 +125,16 @@ if uploaded_file is not None:
                 
                 frame_plot_df = pd.DataFrame(plot_data)
                 if not frame_plot_df.empty:
-                    fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                    fig = px.scatter(
+                        frame_plot_df, 
+                        x="X", 
+                        y="Y", 
+                        color="Finger", 
+                        range_x=[0, max_x_all], 
+                        range_y=[max_y_all, 0], 
+                        template="plotly_white",
+                        color_discrete_sequence=px.colors.qualitative.Set1
+                    )
                     chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_l_{f}")
                 tm.sleep(0.05)
             if st.session_state.current_frame >= max_frames:
@@ -151,7 +154,16 @@ if uploaded_file is not None:
                     plot_data.append({"Finger": f"Finger {fid}", "X": float(x_val), "Y": float(y_val)})
             frame_plot_df = pd.DataFrame(plot_data)
             if not frame_plot_df.empty:
-                fig = px.scatter(frame_plot_df, x="X", y="Y", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                fig = px.scatter(
+                    frame_plot_df, 
+                    x="X", 
+                    y="Y", 
+                    color="Finger", 
+                    range_x=[0, max_x_all], 
+                    range_y=[max_y_all, 0], 
+                    template="plotly_white",
+                    color_discrete_sequence=px.colors.qualitative.Set1
+                )
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_s_{m_frame}")
 
     elif analysis_type == "Line Graph":
@@ -169,7 +181,7 @@ if uploaded_file is not None:
                 with st.spinner("Loading..."):
                     gif_images = []
                     fig, ax = plt.subplots(figsize=(5, 4), dpi=80)
-                    cmap = matplotlib.colormaps['viridis'].resampled(len(valid_finger_ids))
+                    cmap = matplotlib.colormaps['Set1'].resampled(len(valid_finger_ids))
                     
                     for f_idx in range(0, len(filtered_df), skip_factor):
                         ax.clear()
@@ -243,7 +255,16 @@ if uploaded_file is not None:
                 
                 frame_line_df = pd.DataFrame(line_data)
                 if not frame_line_df.empty:
-                    fig = px.line(frame_line_df, x="X Coordinate", y="Y Coordinate", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                    fig = px.line(
+                        frame_line_df, 
+                        x="X Coordinate", 
+                        y="Y Coordinate", 
+                        color="Finger", 
+                        range_x=[0, max_x_all], 
+                        range_y=[max_y_all, 0], 
+                        template="plotly_white",
+                        color_discrete_sequence=px.colors.qualitative.Set1
+                    )
                     chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_l_{f}")
                 tm.sleep(0.05)
             if st.session_state.current_line_frame >= max_frames:
@@ -272,193 +293,17 @@ if uploaded_file is not None:
                         })
             frame_line_df = pd.DataFrame(line_data)
             if not frame_line_df.empty:
-                fig = px.line(frame_line_df, x="X Coordinate", y="Y Coordinate", color="Finger", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
+                fig = px.line(
+                    frame_line_df, 
+                    x="X Coordinate", 
+                    y="Y Coordinate", 
+                    color="Finger", 
+                    range_x=[0, max_x_all], 
+                    range_y=[max_y_all, 0], 
+                    template="plotly_white",
+                    color_discrete_sequence=px.colors.qualitative.Set1
+                )
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_s_{m_frame}")
-
-    elif analysis_type == "Density Heatmap":
-        if "playing_heat" not in st.session_state:
-            st.session_state.playing_heat = False
-        button_label = "Pause" if st.session_state.playing_heat else "Play"
-        if st.button(button_label, key="play_heat_btn"):
-            st.session_state.playing_heat = not st.session_state.playing_heat
-            st.rerun()
-
-        slider_placeholder = st.empty()
-        time_placeholder = st.empty()
-        chart_placeholder = st.empty()
-
-        if "current_heat_frame" not in st.session_state:
-            st.session_state.current_heat_frame = 0
-
-        if st.session_state.playing_heat:
-            import time as tm
-            for f in range(st.session_state.current_heat_frame, max_frames + 1):
-                if not st.session_state.playing_heat:
-                    break
-                st.session_state.current_heat_frame = f
-                slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"heat_sl_{f}")
-                history_df = filtered_df.iloc[0:f + 1]
-                time_placeholder.write(f"**Accumulated Up To Time:** `{filtered_df.iloc[f][time_col]}`")
-                
-                heatmap_data = []
-                for fid in valid_finger_ids:
-                    for _, row in history_df.iterrows():
-                        x_val = row[x_cols[fid]]
-                        y_val = row[y_cols[fid]]
-                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                            heatmap_data.append({"X": float(x_val), "Y": float(y_val)})
-                
-                frame_heat_df = pd.DataFrame(heatmap_data)
-                if not frame_heat_df.empty:
-                    fig = px.density_heatmap(frame_heat_df, x="X", y="Y", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
-                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"heat_ch_l_{f}")
-                tm.sleep(0.05)
-            if st.session_state.current_heat_frame >= max_frames:
-                st.session_state.playing_heat = False
-                st.session_state.current_heat_frame = 0
-                st.rerun()
-        else:
-            m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_heat_frame)
-            st.session_state.current_heat_frame = m_frame
-            history_df = filtered_df.iloc[0:m_frame + 1]
-            time_placeholder.write(f"**Accumulated Up To Time:** `{filtered_df.iloc[m_frame][time_col]}`")
-            
-            heatmap_data = []
-            for fid in valid_finger_ids:
-                for _, row in history_df.iterrows():
-                    x_val = row[x_cols[fid]]
-                    y_val = row[y_cols[fid]]
-                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                        heatmap_data.append({"X": float(x_val), "Y": float(y_val)})
-            frame_heat_df = pd.DataFrame(heatmap_data)
-            if not frame_heat_df.empty:
-                fig = px.density_heatmap(frame_heat_df, x="X", y="Y", range_x=[0, max_x_all], range_y=[max_y_all, 0], template="plotly_white")
-                chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"heat_ch_s_{m_frame}")
-
-    elif analysis_type == "Movement Speed Over Time":
-        if "playing_speed" not in st.session_state:
-            st.session_state.playing_speed = False
-        button_label = "Pause" if st.session_state.playing_speed else "Play"
-        if st.button(button_label, key="play_speed_btn"):
-            st.session_state.playing_speed = not st.session_state.playing_speed
-            st.rerun()
-
-        slider_placeholder = st.empty()
-        time_placeholder = st.empty()
-        chart_placeholder = st.empty()
-
-        if "current_speed_frame" not in st.session_state:
-            st.session_state.current_speed_frame = 0
-
-        speed_calculated_data = []
-        for fid in valid_finger_ids:
-            prev_x, prev_y = None, None
-            for idx, row in filtered_df.iterrows():
-                x_val = row[x_cols[fid]]
-                y_val = row[y_cols[fid]]
-                t_val = row[time_col]
-                if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                    if prev_x is not None and prev_y is not None:
-                        speed = np.sqrt((float(x_val) - prev_x)**2 + (float(y_val) - prev_y)**2)
-                        speed_calculated_data.append({"Index": idx, "Time": t_val, "Speed (px/frame)": speed, "Finger": f"Finger {fid}"})
-                    prev_x, prev_y = float(x_val), float(y_val)
-                else:
-                    prev_x, prev_y = None, None
-        
-        full_speed_df = pd.DataFrame(speed_calculated_data)
-
-        if not full_speed_df.empty:
-            max_speed_val = full_speed_df["Speed (px/frame)"].max() * 1.1
-            if st.session_state.playing_speed:
-                import time as tm
-                for f in range(st.session_state.current_speed_frame, max_frames + 1):
-                    if not st.session_state.playing_speed:
-                        break
-                    st.session_state.current_speed_frame = f
-                    slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"speed_sl_{f}")
-                    time_placeholder.write(f"**Current Time:** `{filtered_df.iloc[f][time_col]}`")
-                    
-                    frame_speed_df = full_speed_df[full_speed_df["Index"] <= f]
-                    if not frame_speed_df.empty:
-                        fig = px.line(frame_speed_df, x="Time", y="Speed (px/frame)", color="Finger", range_y=[0, max_speed_val], template="plotly_white")
-                        chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"speed_ch_l_{f}")
-                    tm.sleep(0.05)
-                if st.session_state.current_speed_frame >= max_frames:
-                    st.session_state.playing_speed = False
-                    st.session_state.current_speed_frame = 0
-                    st.rerun()
-            else:
-                m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_speed_frame)
-                st.session_state.current_speed_frame = m_frame
-                time_placeholder.write(f"**Current Time:** `{filtered_df.iloc[m_frame][time_col]}`")
-                
-                frame_speed_df = full_speed_df[full_speed_df["Index"] <= m_frame]
-                if not frame_speed_df.empty:
-                    fig = px.line(frame_speed_df, x="Time", y="Speed (px/frame)", color="Finger", range_y=[0, max_speed_val], template="plotly_white")
-                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"speed_ch_s_{m_frame}")
-        else:
-            st.warning("Insufficient continuous data to calculate speed tracking profiles.")
-
-    elif analysis_type == "Finger Active Time Comparison":
-        if "playing_active" not in st.session_state:
-            st.session_state.playing_active = False
-        button_label = "Pause" if st.session_state.playing_active else "Play"
-        if st.button(button_label, key="play_active_btn"):
-            st.session_state.playing_active = not st.session_state.playing_active
-            st.rerun()
-
-        slider_placeholder = st.empty()
-        time_placeholder = st.empty()
-        chart_placeholder = st.empty()
-
-        if "current_active_frame" not in st.session_state:
-            st.session_state.current_active_frame = 0
-
-        if st.session_state.playing_active:
-            import time as tm
-            for f in range(st.session_state.current_active_frame, max_frames + 1):
-                if not st.session_state.playing_active:
-                    break
-                st.session_state.current_active_frame = f
-                slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"active_sl_{f}")
-                time_placeholder.write(f"**Current Time:** `{filtered_df.iloc[f][time_col]}`")
-                
-                history_df = filtered_df.iloc[0:f + 1]
-                active_counts = []
-                total_rows = len(history_df)
-                for fid in valid_finger_ids:
-                    fx = history_df[x_cols[fid]]
-                    fy = history_df[y_cols[fid]]
-                    active_frames = ((pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)).sum()
-                    percentage = (active_frames / total_rows) * 100
-                    active_counts.append({"Finger": f"Finger {fid}", "Active Frames Percentage": percentage})
-                
-                frame_active_df = pd.DataFrame(active_counts)
-                fig = px.bar(frame_active_df, x="Finger", y="Active Frames Percentage", color="Finger", range_y=[0, 100], template="plotly_white")
-                chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"active_ch_l_{f}")
-                tm.sleep(0.05)
-            if st.session_state.current_active_frame >= max_frames:
-                st.session_state.playing_active = False
-                st.session_state.current_active_frame = 0
-                st.rerun()
-        else:
-            m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_active_frame)
-            st.session_state.current_active_frame = m_frame
-            time_placeholder.write(f"**Current Time:** `{filtered_df.iloc[m_frame][time_col]}`")
-            
-            history_df = filtered_df.iloc[0:m_frame + 1]
-            active_counts = []
-            total_rows = len(history_df)
-            for fid in valid_finger_ids:
-                fx = history_df[x_cols[fid]]
-                fy = history_df[y_cols[fid]]
-                active_frames = ((pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)).sum()
-                percentage = (active_frames / total_rows) * 100
-                active_counts.append({"Finger": f"Finger {fid}", "Active Frames Percentage": percentage})
-            
-            frame_active_df = pd.DataFrame(active_counts)
-            fig = px.bar(frame_active_df, x="Finger", y="Active Frames Percentage", color="Finger", range_y=[0, 100], template="plotly_white")
-            chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"active_ch_s_{m_frame}")
 
     st.write("---")
     st.subheader("Data Analysis Document Generation")
