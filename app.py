@@ -17,7 +17,7 @@ if uploaded_file is not None:
     
     analysis_type = st.selectbox(
         "Select Graph Type",
-        options=["Scatterplot", "Line Graph"]
+        options=["Scatterplot", "Line Graph", "Finger Active Time Breakdown"]
     )
     
     x_cols = {}
@@ -305,25 +305,47 @@ if uploaded_file is not None:
                 )
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_s_{m_frame}")
 
-    st.write("---")
-    st.subheader("Data Analysis Document Generation")
-    if st.button("Generate Data Analysis Report"):
-        st.markdown("### Documented System Analysis Metrics")
-        total_recorded_intervals = len(filtered_df)
-        st.write(f"Total trackable timeline entries evaluated: {total_recorded_intervals}")
-        
+    elif analysis_type == "Finger Active Time Breakdown":
+        active_counts = []
+        total_rows = len(filtered_df)
         for fid in valid_finger_ids:
             fx = filtered_df[x_cols[fid]]
             fy = filtered_df[y_cols[fid]]
-            active_mask = (pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)
-            active_count = active_mask.sum()
+            active_frames = ((pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)).sum()
+            percentage = (active_frames / total_rows) * 100
+            active_counts.append({"Finger": f"Finger {fid}", "Active Time Percentage": percentage})
+        
+        active_df = pd.DataFrame(active_counts)
+        if not active_df.empty:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.set_facecolor('#f8f9fa')
             
-            st.markdown(f"#### Finger {fid} Operational Profile")
-            if active_count > 0:
-                act_pct = (active_count / total_recorded_intervals) * 100
-                mean_x = fx[active_mask].mean()
-                mean_y = fy[active_mask].mean()
-                st.write(f"Active engagement threshold representation: {act_pct:.2f}% of monitored runtime duration ({active_count} explicit frames verified)")
-                st.write(f"Calculated coordinate tracking balance center: X: {mean_x:.1f} px, Y: {mean_y:.1f} px")
-            else:
-                st.write("No positional touch coordinates captured over the runtime threshold history for this finger identity signature.")
+            colors = matplotlib.colormaps['Set1'].resampled(len(valid_finger_ids))
+            bars = ax.bar(active_df["Finger"], active_df["Active Time Percentage"], color=[colors(i) for i in range(len(valid_finger_ids))], edgecolor='black')
+            
+            ax.set_ylabel("Percentage of Total Time (%)")
+            ax.set_title("Finger Screen Presence Percentage Summary")
+            ax.set_ylim(0, 105)
+            ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7, axis='y')
+            
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'{height:.1f}%',
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),  
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+            
+            st.pyplot(fig)
+            
+            img_buf = io.BytesIO()
+            plt.savefig(img_buf, format='png', bbox_inches='tight')
+            img_buf.seek(0)
+            plt.close(fig)
+            
+            st.download_button(
+                label="Download Finger Active Time Image",
+                data=img_buf.getvalue(),
+                file_name="finger_active_time.png",
+                mime="image/png"
+            )
