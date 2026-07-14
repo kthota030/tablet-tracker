@@ -70,7 +70,8 @@ if uploaded_file is not None:
                         current_ts = current_row[time_col]
                         
                         ax.clear()
-                        ax.set_facecolor('#f8f9fa')
+                        ax.set_facecolor('#ffffff')
+                        fig.patch.set_facecolor('#ffffff')
                         ax.set_xlim(0, max_x_all)
                         ax.set_ylim(max_y_all, 0)
                         ax.set_xlabel("X (px)")
@@ -89,7 +90,7 @@ if uploaded_file is not None:
                         ax.legend(by_label.values(), by_label.keys(), loc="upper right")
                         
                         frame_buf = io.BytesIO()
-                        plt.savefig(frame_buf, format='png', bbox_inches='tight')
+                        plt.savefig(frame_buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
                         frame_buf.seek(0)
                         gif_images.append(Image.open(frame_buf))
                     
@@ -135,8 +136,9 @@ if uploaded_file is not None:
                         template="plotly_white",
                         color_discrete_sequence=px.colors.qualitative.Set1
                     )
+                    fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
                     chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_l_{f}")
-                tm.sleep(0.05)
+                tm.sleep(0.01) # Decreased sleep time to reduce latency/flashing
             if st.session_state.current_frame >= max_frames:
                 st.session_state.playing = False
                 st.session_state.current_frame = 0
@@ -164,6 +166,7 @@ if uploaded_file is not None:
                     template="plotly_white",
                     color_discrete_sequence=px.colors.qualitative.Set1
                 )
+                fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
                 chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_s_{m_frame}")
 
     elif analysis_type == "Line Graph":
@@ -185,7 +188,8 @@ if uploaded_file is not None:
                     
                     for f_idx in range(0, len(filtered_df), skip_factor):
                         ax.clear()
-                        ax.set_facecolor('#f8f9fa')
+                        ax.set_facecolor('#ffffff')
+                        fig.patch.set_facecolor('#ffffff')
                         ax.set_xlim(0, max_x_all)
                         ax.set_ylim(max_y_all, 0)
                         ax.set_xlabel("X (px)")
@@ -211,7 +215,7 @@ if uploaded_file is not None:
                             ax.legend(by_label.values(), by_label.keys(), loc="upper right")
                             
                         frame_buf = io.BytesIO()
-                        plt.savefig(frame_buf, format='png', bbox_inches='tight')
+                        plt.savefig(frame_buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
                         frame_buf.seek(0)
                         gif_images.append(Image.open(frame_buf))
                         
@@ -237,132 +241,3 @@ if uploaded_file is not None:
                 slider_placeholder.slider("Timeline", 0, max_frames, f, key=f"line_sl_{f}")
                 current_row = filtered_df.iloc[f]
                 time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
-                
-                start_frame = max(0, f - 25)
-                history_df = filtered_df.iloc[start_frame:f + 1]
-                
-                line_data = []
-                for fid in valid_finger_ids:
-                    for _, row in history_df.iterrows():
-                        x_val = row[x_cols[fid]]
-                        y_val = row[y_cols[fid]]
-                        if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                            line_data.append({
-                                "Finger": f"Finger {fid}",
-                                "X Coordinate": float(x_val),
-                                "Y Coordinate": float(y_val)
-                            })
-                
-                frame_line_df = pd.DataFrame(line_data)
-                if not frame_line_df.empty:
-                    fig = px.line(
-                        frame_line_df, 
-                        x="X Coordinate", 
-                        y="Y Coordinate", 
-                        color="Finger", 
-                        range_x=[0, max_x_all], 
-                        range_y=[max_y_all, 0], 
-                        template="plotly_white",
-                        color_discrete_sequence=px.colors.qualitative.Set1
-                    )
-                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_l_{f}")
-                tm.sleep(0.05)
-            if st.session_state.current_line_frame >= max_frames:
-                st.session_state.playing_line = False
-                st.session_state.current_line_frame = 0
-                st.rerun()
-        else:
-            m_frame = slider_placeholder.slider("Timeline", 0, max_frames, st.session_state.current_line_frame)
-            st.session_state.current_line_frame = m_frame
-            current_row = filtered_df.iloc[m_frame]
-            time_placeholder.write(f"**Current Time:** `{current_row[time_col]}`")
-            
-            start_frame = max(0, m_frame - 25)
-            history_df = filtered_df.iloc[start_frame:m_frame + 1]
-            
-            line_data = []
-            for fid in valid_finger_ids:
-                for _, row in history_df.iterrows():
-                    x_val = row[x_cols[fid]]
-                    y_val = row[y_cols[fid]]
-                    if pd.notna(x_val) and pd.notna(y_val) and (x_val != 0 or y_val != 0):
-                        line_data.append({
-                            "Finger": f"Finger {fid}",
-                            "X Coordinate": float(x_val),
-                            "Y Coordinate": float(y_val)
-                        })
-            frame_line_df = pd.DataFrame(line_data)
-            if not frame_line_df.empty:
-                fig = px.line(
-                    frame_line_df, 
-                    x="X Coordinate", 
-                    y="Y Coordinate", 
-                    color="Finger", 
-                    range_x=[0, max_x_all], 
-                    range_y=[max_y_all, 0], 
-                    template="plotly_white",
-                    color_discrete_sequence=px.colors.qualitative.Set1
-                )
-                chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_s_{m_frame}")
-
-    elif analysis_type == "Finger Active Time Breakdown":
-        active_counts = []
-        total_rows = len(filtered_df)
-        for fid in valid_finger_ids:
-            fx = filtered_df[x_cols[fid]]
-            fy = filtered_df[y_cols[fid]]
-            active_frames = ((pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)).sum()
-            percentage = (active_frames / total_rows) * 100
-            active_counts.append({"ID": str(fid), "Active Time Percentage": percentage})
-        
-        active_df = pd.DataFrame(active_counts)
-        if not active_df.empty:
-            # Styled configuration using a crisp white theme style
-            fig, ax = plt.subplots(figsize=(6, 4.5), dpi=100)
-            ax.set_facecolor('#ffffff')
-            fig.patch.set_facecolor('#ffffff')
-            
-            colors = matplotlib.colormaps['Set1'].resampled(len(valid_finger_ids))
-            bars = ax.bar(
-                active_df["ID"], 
-                active_df["Active Time Percentage"], 
-                color=[colors(i) for i in range(len(valid_finger_ids))], 
-                edgecolor='#2c3e50',
-                linewidth=1.2,
-                width=0.5
-            )
-            
-            ax.set_ylabel("Percentage of Total Time (%)", fontsize=10, fontweight='bold', color='#2c3e50')
-            ax.set_xlabel("Finger ID", fontsize=10, fontweight='bold', color='#2c3e50')
-            ax.set_title("Percentage of Active Time Per Finger", fontsize=12, fontweight='bold', color='#1a252f', pad=15)
-            ax.set_ylim(0, 110)
-            
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['left'].set_color('#bdc3c7')
-            ax.spines['bottom'].set_color('#bdc3c7')
-            ax.tick_params(axis='both', colors='#2c3e50', labelsize=9)
-            
-            ax.grid(True, linestyle=':', color='#e2e8f0', alpha=0.7, axis='y')
-            
-            for bar in bars:
-                height = bar.get_height()
-                ax.annotate(f'{height:.1f}%',
-                            xy=(bar.get_x() + bar.get_width() / 2, height),
-                            xytext=(0, 4),  
-                            textcoords="offset points",
-                            ha='center', va='bottom', fontsize=9, fontweight='bold', color='#2c3e50')
-            
-            st.pyplot(fig)
-            
-            img_buf = io.BytesIO()
-            plt.savefig(img_buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
-            img_buf.seek(0)
-            plt.close(fig)
-            
-            st.download_button(
-                label="Download Percentage of Active Time Image",
-                data=img_buf.getvalue(),
-                file_name="active_time_percentage.png",
-                mime="image/png"
-            )
