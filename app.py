@@ -265,7 +265,7 @@ if uploaded_file is not None:
                         template="plotly_white",
                         color_discrete_sequence=px.colors.qualitative.Set1
                     )
-                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"line_ch_l_{f}")
+                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"ch_l_{f}")
                 tm.sleep(0.05)
             if st.session_state.current_line_frame >= max_frames:
                 st.session_state.playing_line = False
@@ -313,39 +313,56 @@ if uploaded_file is not None:
             fy = filtered_df[y_cols[fid]]
             active_frames = ((pd.notna(fx)) & (pd.notna(fy)) & (fx != 0) & (fy != 0)).sum()
             percentage = (active_frames / total_rows) * 100
-            active_counts.append({"Finger": f"Finger {fid}", "Active Time Percentage": percentage})
+            active_counts.append({"ID": str(fid), "Active Time Percentage": percentage})
         
         active_df = pd.DataFrame(active_counts)
         if not active_df.empty:
-            fig, ax = plt.subplots(figsize=(6, 4))
-            ax.set_facecolor('#f8f9fa')
+            # Styled configuration using a crisp white theme style
+            fig, ax = plt.subplots(figsize=(6, 4.5), dpi=100)
+            ax.set_facecolor('#ffffff')
+            fig.patch.set_facecolor('#ffffff')
             
             colors = matplotlib.colormaps['Set1'].resampled(len(valid_finger_ids))
-            bars = ax.bar(active_df["Finger"], active_df["Active Time Percentage"], color=[colors(i) for i in range(len(valid_finger_ids))], edgecolor='black')
+            bars = ax.bar(
+                active_df["ID"], 
+                active_df["Active Time Percentage"], 
+                color=[colors(i) for i in range(len(valid_finger_ids))], 
+                edgecolor='#2c3e50',
+                linewidth=1.2,
+                width=0.5
+            )
             
-            ax.set_ylabel("Percentage of Total Time (%)")
-            ax.set_title("Finger Screen Presence Percentage Summary")
-            ax.set_ylim(0, 105)
-            ax.grid(True, linestyle='--', color='#cccccc', alpha=0.7, axis='y')
+            ax.set_ylabel("Percentage of Total Time (%)", fontsize=10, fontweight='bold', color='#2c3e50')
+            ax.set_xlabel("Finger ID", fontsize=10, fontweight='bold', color='#2c3e50')
+            ax.set_title("Percentage of Active Time Per Finger", fontsize=12, fontweight='bold', color='#1a252f', pad=15)
+            ax.set_ylim(0, 110)
+            
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_color('#bdc3c7')
+            ax.spines['bottom'].set_color('#bdc3c7')
+            ax.tick_params(axis='both', colors='#2c3e50', labelsize=9)
+            
+            ax.grid(True, linestyle=':', color='#e2e8f0', alpha=0.7, axis='y')
             
             for bar in bars:
                 height = bar.get_height()
                 ax.annotate(f'{height:.1f}%',
                             xy=(bar.get_x() + bar.get_width() / 2, height),
-                            xytext=(0, 3),  
+                            xytext=(0, 4),  
                             textcoords="offset points",
-                            ha='center', va='bottom')
+                            ha='center', va='bottom', fontsize=9, fontweight='bold', color='#2c3e50')
             
             st.pyplot(fig)
             
             img_buf = io.BytesIO()
-            plt.savefig(img_buf, format='png', bbox_inches='tight')
+            plt.savefig(img_buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
             img_buf.seek(0)
             plt.close(fig)
             
             st.download_button(
-                label="Download Finger Active Time Image",
+                label="Download Percentage of Active Time Image",
                 data=img_buf.getvalue(),
-                file_name="finger_active_time.png",
+                file_name="active_time_percentage.png",
                 mime="image/png"
             )
